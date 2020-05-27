@@ -23,12 +23,11 @@ let package = Package(
         .target(
             name: "URLRouter",
             path: "URLRouter",
-            dependencies: []
         ),
         .testTarget(
             name: "URLRouterTests",
-            path: "URLRouterTests",
             dependencies: ["URLRouter"]
+            path: "URLRouterTests",
         ),
     ]
 )
