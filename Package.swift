@@ -25,9 +25,10 @@ let package = Package(
             path: "URLRouter",
             dependencies: []
         ),
-    .testTarget(
-        name: "URLRouterTests",
-        dependencies: ["URLRouter"]
-    ),
+        .testTarget(
+            name: "URLRouterTests",
+            path: "URLRouterTests",
+            dependencies: ["URLRouter"]
+        ),
     ]
 )
