@@ -28,7 +28,7 @@ public protocol Destination {
 }
 
 open class URLRouter: Router<Destination> {
-    public static let shared = URLRouter();
+    public static let shared = URLRouter()
     
     @discardableResult
     public func open(_ url: URL, completion: CompletionHandler? = nil) -> Bool {
@@ -36,7 +36,11 @@ open class URLRouter: Router<Destination> {
             return false
         }
         
-        UIApplication.shared.open(url, options: [UIApplication.OpenExternalURLOptionsKey(rawValue: "source") : "URLRouter"], completionHandler: nil)
+        if #available(iOS 10.0, *) {
+            UIApplication.shared.open(url, options: [UIApplication.OpenExternalURLOptionsKey(rawValue: "source") : "URLRouter"], completionHandler: nil)
+        } else {
+            UIApplication.shared.openURL(url)
+        }
         
         for i in 0..<self.routes.count {
             if self.routes[i].find(for: url) {
