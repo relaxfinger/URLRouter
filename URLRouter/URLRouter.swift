@@ -112,8 +112,10 @@ extension UIViewController {
         switch transition {
         case .push:
             if let navigationController = self as? UINavigationController {
+                viewController.hidesBottomBarWhenPushed = true
                 navigationController.pushViewController(viewController, animated: true)
             } else if let navigationController = self.navigationController {
+                viewController.hidesBottomBarWhenPushed = true
                 navigationController.pushViewController(viewController, animated: true)
             } else {
                 let navigationController = UINavigationController(rootViewController: viewController)
