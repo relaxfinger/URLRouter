@@ -1,3 +1,11 @@
+//
+//  Router.swift
+//  URLRouter
+//
+//  Copyright (c) 2026 relaxfinger
+//  SPDX-License-Identifier: MIT
+//
+
 import Foundation
 
 /// A validated HTTPS Universal Link, independent from any UI framework.

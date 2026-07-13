@@ -1,3 +1,11 @@
+//
+//  URLRouterTests.swift
+//  URLRouterTests
+//
+//  Copyright (c) 2026 relaxfinger
+//  SPDX-License-Identifier: MIT
+//
+
 import XCTest
 @testable import URLRouter
 

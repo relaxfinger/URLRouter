@@ -485,3 +485,9 @@ Apple 的 [TN3155: Debugging Universal Links](https://developer.apple.com/docume
 | `AppRouter.apply(_:)` | Execute a route presentation / 执行跳转 |
 | `AppRouter.handle(universalLink:allowedHosts:)` | Validate, parse, and execute a Universal Link / 校验、解析并执行 Universal Link |
 | `RouterHost` | Connect router state to SwiftUI presentation / 把 router 状态接到 SwiftUI 展示 |
+
+## License / 许可证
+
+URLRouter is released under the [MIT License](LICENSE).
+
+URLRouter 使用 [MIT License](LICENSE) 发布。你可以自由使用、复制、修改、分发及用于商业项目；分发代码或其重要部分时，请保留版权与许可证声明。软件按“原样”提供，不附带任何担保。详见 [LICENSE](LICENSE)。

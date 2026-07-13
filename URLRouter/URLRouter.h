@@ -2,8 +2,8 @@
 //  URLRouter.h
 //  URLRouter
 //
-//  Created by relaxfinger on 2020/4/19.
-//  Copyright © 2020 relaxfinger. All rights reserved.
+//  Copyright (c) 2026 relaxfinger
+//  SPDX-License-Identifier: MIT
 //
 
 #import <Foundation/Foundation.h>
@@ -15,5 +15,4 @@ FOUNDATION_EXPORT double URLRouterVersionNumber;
 FOUNDATION_EXPORT const unsigned char URLRouterVersionString[];
 
 // In this header, you should import all the public headers of your framework using statements like #import <URLRouter/PublicHeader.h>
-
 
