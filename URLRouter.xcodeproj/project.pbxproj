@@ -14,6 +14,7 @@
 		6ED81CAF244C48B200C385B2 /* URLRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6ED81CAE244C48B200C385B2 /* URLRouter.swift */; };
 		D3A000000000000000000001 /* URLRouterDemoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A000000000000000000011 /* URLRouterDemoApp.swift */; };
 		D3A000000000000000000002 /* DemoViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A000000000000000000012 /* DemoViews.swift */; };
+		D3A000000000000000000005 /* DemoFeatureViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A000000000000000000015 /* DemoFeatureViews.swift */; };
 		D3A000000000000000000003 /* URLRouter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6ED81C92244C409800C385B2 /* URLRouter.framework */; };
 		D3A000000000000000000004 /* URLRouter.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 6ED81C92244C409800C385B2 /* URLRouter.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -64,6 +65,7 @@
 		D3A000000000000000000012 /* DemoViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoViews.swift; sourceTree = "<group>"; };
 		D3A000000000000000000013 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D3A000000000000000000014 /* URLRouterDemo.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = URLRouterDemo.entitlements; sourceTree = "<group>"; };
+		D3A000000000000000000015 /* DemoFeatureViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoFeatureViews.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -139,6 +141,7 @@
 			children = (
 				D3A000000000000000000011 /* URLRouterDemoApp.swift */,
 				D3A000000000000000000012 /* DemoViews.swift */,
+				D3A000000000000000000015 /* DemoFeatureViews.swift */,
 				D3A000000000000000000013 /* Info.plist */,
 				D3A000000000000000000014 /* URLRouterDemo.entitlements */,
 			);
@@ -304,6 +307,7 @@
 			files = (
 				D3A000000000000000000001 /* URLRouterDemoApp.swift in Sources */,
 				D3A000000000000000000002 /* DemoViews.swift in Sources */,
+				D3A000000000000000000005 /* DemoFeatureViews.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

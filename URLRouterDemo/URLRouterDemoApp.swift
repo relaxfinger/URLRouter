@@ -22,8 +22,12 @@ struct URLRouterDemoApp: App {
             } destination: { route in
                 DemoDestination(route: route, router: router, session: session)
             }
+            .environment(
+                \.openURL,
+                DemoLinkHandler.openURLAction(router: router, session: session)
+            )
             .onOpenURL { url in
-                DemoLinkHandler.open(url, router: router, session: session)
+                _ = DemoLinkHandler.open(url, router: router, session: session)
             }
         }
     }
@@ -32,7 +36,25 @@ struct URLRouterDemoApp: App {
 
 @MainActor
 enum DemoLinkHandler {
-    static func open(_ url: URL, router: AppRouter<DemoRoute>, session: DemoSession) {
+    static func openURLAction(
+        router: AppRouter<DemoRoute>,
+        session: DemoSession
+    ) -> OpenURLAction {
+        OpenURLAction { url in
+            open(url, router: router, session: session)
+        }
+    }
+
+    static func open(
+        _ url: URL,
+        router: AppRouter<DemoRoute>,
+        session: DemoSession
+    ) -> OpenURLAction.Result {
+        guard let host = URLComponents(url: url, resolvingAgainstBaseURL: false)?.host?.lowercased(),
+              host == "example.com" else {
+            return .systemAction
+        }
+
         do {
             let link = try UniversalLink(url: url, allowedHosts: ["example.com"])
             let presentation = try DemoRoute.presentation(for: link)
@@ -43,8 +65,10 @@ enum DemoLinkHandler {
             } else {
                 router.apply(presentation)
             }
+            return .handled
         } catch {
             session.lastError = error.localizedDescription
+            return .discarded
         }
     }
 

@@ -13,9 +13,10 @@ URLRouter is a lightweight SwiftUI routing foundation. It converts external URLs
 3. [Set up Universal Links](#set-up-universal-links)
 4. [Complete first integration](#complete-first-integration)
 5. [Routing scenarios](#routing-scenarios)
-6. [Demo app](#demo-app)
-7. [Validation, errors, and security](#validation-errors-and-security)
-8. [Testing and troubleshooting](#testing-and-troubleshooting)
+6. [Modular feature packages](#modular-feature-packages)
+7. [Demo app](#demo-app)
+8. [Validation, errors, and security](#validation-errors-and-security)
+9. [Testing and troubleshooting](#testing-and-troubleshooting)
 
 ## Requirements and installation
 
@@ -293,6 +294,43 @@ Button("Load recommended article") {
 ```
 
 Perform networking and database work in `Task`; only `router.apply` needs to return to the main actor.
+
+## Modular feature packages
+
+Only the app shell needs `URLRouter`. A feature package can depend on `SwiftUI` alone and request navigation through the system `openURL` environment action:
+
+```swift
+import SwiftUI
+
+struct ArticleList: View {
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        Button("Open article 42") {
+            openURL(URL(string: "https://example.com/articles/42")!)
+        }
+    }
+}
+```
+
+Install a router-backed action at the app root. This adapter handles approved internal hosts and leaves every other URL to the operating system:
+
+```swift
+RouterHost(router: router) {
+    AppTabs()
+} destination: { route in
+    RouteDestination(route: route)
+}
+.environment(
+    \.openURL,
+    router.openURLAction(allowedHosts: ["example.com"])
+)
+.onOpenURL { url in
+    try? router.handle(universalLink: url, allowedHosts: ["example.com"])
+}
+```
+
+The feature never imports `URLRouter`, accesses `AppRouter`, or knows whether a URL becomes a push, tab, sheet, or full-screen presentation. For authentication, analytics, or error reporting, replace `openURLAction` with a small app-shell `OpenURLAction` wrapper; the demo includes one that protects `/articles/private`.
 
 ## Demo app
 

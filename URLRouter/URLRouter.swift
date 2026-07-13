@@ -44,6 +44,25 @@ public final class AppRouter<Route: Hashable & Sendable> {
         let link = try UniversalLink(url: url, allowedHosts: allowedHosts)
         apply(try Route.presentation(for: link))
     }
+
+    /// Adapts the router to SwiftUI's `openURL` environment action.
+    /// URLs outside `allowedHosts` are delegated to the operating system.
+    public func openURLAction(allowedHosts: Set<String>) -> OpenURLAction where Route: UniversalLinkRoute {
+        OpenURLAction { url in
+            guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+                  let host = components.host?.lowercased(),
+                  allowedHosts.contains(where: { $0.lowercased() == host }) else {
+                return .systemAction
+            }
+
+            do {
+                try self.handle(universalLink: url, allowedHosts: allowedHosts)
+                return .handled
+            } catch {
+                return .discarded
+            }
+        }
+    }
 }
 
 /// A reusable SwiftUI shell for push, sheet, and full-screen-cover routes.
