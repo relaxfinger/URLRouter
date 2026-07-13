@@ -22,12 +22,8 @@ struct URLRouterDemoApp: App {
             } destination: { route in
                 DemoDestination(route: route, router: router, session: session)
             }
-            .environment(
-                \.openURL,
-                DemoLinkHandler.openURLAction(router: router, session: session)
-            )
-            .onOpenURL { url in
-                _ = DemoLinkHandler.open(url, router: router, session: session)
+            .universalLinkRouting(router: router, allowedHosts: ["example.com"]) { presentation in
+                DemoNavigationPolicy.apply(presentation, router: router, session: session)
             }
         }
     }
@@ -35,40 +31,17 @@ struct URLRouterDemoApp: App {
 }
 
 @MainActor
-enum DemoLinkHandler {
-    static func openURLAction(
+enum DemoNavigationPolicy {
+    static func apply(
+        _ presentation: RoutePresentation<DemoRoute>,
         router: AppRouter<DemoRoute>,
         session: DemoSession
-    ) -> OpenURLAction {
-        OpenURLAction { url in
-            open(url, router: router, session: session)
-        }
-    }
-
-    static func open(
-        _ url: URL,
-        router: AppRouter<DemoRoute>,
-        session: DemoSession
-    ) -> OpenURLAction.Result {
-        guard let host = URLComponents(url: url, resolvingAgainstBaseURL: false)?.host?.lowercased(),
-              host == "example.com" else {
-            return .systemAction
-        }
-
-        do {
-            let link = try UniversalLink(url: url, allowedHosts: ["example.com"])
-            let presentation = try DemoRoute.presentation(for: link)
-
-            if isProtected(presentation), !session.isSignedIn {
-                session.pendingPresentation = presentation
-                router.apply(.fullScreenCover(.signIn))
-            } else {
-                router.apply(presentation)
-            }
-            return .handled
-        } catch {
-            session.lastError = error.localizedDescription
-            return .discarded
+    ) {
+        if isProtected(presentation), !session.isSignedIn {
+            session.pendingPresentation = presentation
+            router.apply(.fullScreenCover(.signIn))
+        } else {
+            router.apply(presentation)
         }
     }
 

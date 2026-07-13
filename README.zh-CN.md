@@ -340,7 +340,7 @@ struct ArticleList: View {
 }
 ```
 
-在 App 根部安装由 router 驱动的 action。它处理受信任域名的内部 URL，其他 URL 继续交给系统：
+在 App 根部安装 URLRouter 提供的修饰器。它同时处理 `openURL` 动作和系统传入的 Universal Link；App 只需提供允许域名以及可选的强类型路由策略：
 
 ```swift
 RouterHost(router: router) {
@@ -348,16 +348,12 @@ RouterHost(router: router) {
 } destination: { route in
     RouteDestination(route: route)
 }
-.environment(
-    \.openURL,
-    router.openURLAction(allowedHosts: ["example.com"])
-)
-.onOpenURL { url in
-    try? router.handle(universalLink: url, allowedHosts: ["example.com"])
+.universalLinkRouting(router: router, allowedHosts: ["example.com"]) { presentation in
+    router.apply(presentation)
 }
 ```
 
-Feature 无需导入 `URLRouter`、访问 `AppRouter`，也不需要知道 URL 最终是 push、Tab、sheet 还是全屏展示。若需要登录拦截、埋点或错误提示，可在 App Shell 自行提供一个 `OpenURLAction` 包装器；Demo 中已演示 `/articles/private` 的登录拦截。
+Feature 无需导入 `URLRouter`、访问 `AppRouter`，也不需要知道 URL 最终是 push、Tab、sheet 还是全屏展示。URL 校验与系统 URL 分发都留在 URLRouter 中；需要登录拦截、埋点或错误提示时，只需在强类型 `presentation` 闭包中处理。Demo 已演示 `/articles/private` 的登录拦截。
 
 ## 示例应用
 

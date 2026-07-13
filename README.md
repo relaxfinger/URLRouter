@@ -313,7 +313,7 @@ struct ArticleList: View {
 }
 ```
 
-Install a router-backed action at the app root. This adapter handles approved internal hosts and leaves every other URL to the operating system:
+Install URLRouter's root modifier. It handles both `openURL` actions and system-delivered Universal Links; the app only supplies its approved hosts and optional typed-presentation policy:
 
 ```swift
 RouterHost(router: router) {
@@ -321,16 +321,12 @@ RouterHost(router: router) {
 } destination: { route in
     RouteDestination(route: route)
 }
-.environment(
-    \.openURL,
-    router.openURLAction(allowedHosts: ["example.com"])
-)
-.onOpenURL { url in
-    try? router.handle(universalLink: url, allowedHosts: ["example.com"])
+.universalLinkRouting(router: router, allowedHosts: ["example.com"]) { presentation in
+    router.apply(presentation)
 }
 ```
 
-The feature never imports `URLRouter`, accesses `AppRouter`, or knows whether a URL becomes a push, tab, sheet, or full-screen presentation. For authentication, analytics, or error reporting, replace `openURLAction` with a small app-shell `OpenURLAction` wrapper; the demo includes one that protects `/articles/private`.
+The feature never imports `URLRouter`, accesses `AppRouter`, or knows whether a URL becomes a push, tab, sheet, or full-screen presentation. URL validation and system URL delivery stay in URLRouter. Use the typed `presentation` closure for authentication, analytics, or error reporting; the demo protects `/articles/private` there.
 
 ## Demo app
 

@@ -48,20 +48,95 @@ public final class AppRouter<Route: Hashable & Sendable> {
     /// Adapts the router to SwiftUI's `openURL` environment action.
     /// URLs outside `allowedHosts` are delegated to the operating system.
     public func openURLAction(allowedHosts: Set<String>) -> OpenURLAction where Route: UniversalLinkRoute {
-        OpenURLAction { url in
-            guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-                  let host = components.host?.lowercased(),
-                  allowedHosts.contains(where: { $0.lowercased() == host }) else {
-                return .systemAction
-            }
+        openURLAction(allowedHosts: allowedHosts, onPresentation: apply)
+    }
 
-            do {
-                try self.handle(universalLink: url, allowedHosts: allowedHosts)
-                return .handled
-            } catch {
-                return .discarded
-            }
+    /// Adapts the router to SwiftUI's `openURL` environment action with a
+    /// presentation policy such as authentication or analytics.
+    ///
+    /// The policy receives only a validated, typed presentation. It never
+    /// receives the raw URL, keeping URL parsing inside URLRouter.
+    public func openURLAction(
+        allowedHosts: Set<String>,
+        onPresentation: @escaping @MainActor (RoutePresentation<Route>) -> Void
+    ) -> OpenURLAction where Route: UniversalLinkRoute {
+        OpenURLAction { url in
+            self.openURL(url, allowedHosts: allowedHosts, onPresentation: onPresentation)
         }
+    }
+
+    /// Handles one URL and reports the corresponding SwiftUI `OpenURLAction` result.
+    /// URLs outside `allowedHosts` are delegated to the operating system.
+    public func openURL(
+        _ url: URL,
+        allowedHosts: Set<String>,
+        onPresentation: @escaping @MainActor (RoutePresentation<Route>) -> Void
+    ) -> OpenURLAction.Result where Route: UniversalLinkRoute {
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let host = components.host?.lowercased(),
+              allowedHosts.contains(where: { $0.lowercased() == host }) else {
+            return .systemAction
+        }
+
+        do {
+            let link = try UniversalLink(url: url, allowedHosts: allowedHosts)
+            onPresentation(try Route.presentation(for: link))
+            return .handled
+        } catch {
+            return .discarded
+        }
+    }
+}
+
+/// Installs one URLRouter-backed URL entry point for a SwiftUI view hierarchy.
+///
+/// Place this on the root view in a `WindowGroup`. Feature views can then call
+/// `openURL(_:)`, while URLs delivered by the operating system are handled too.
+@available(iOS 17.0, macOS 14.0, *)
+@MainActor
+public struct UniversalLinkRoutingModifier<Route: UniversalLinkRoute>: ViewModifier {
+    private let router: AppRouter<Route>
+    private let allowedHosts: Set<String>
+    private let onPresentation: @MainActor (RoutePresentation<Route>) -> Void
+
+    public init(
+        router: AppRouter<Route>,
+        allowedHosts: Set<String>,
+        onPresentation: @escaping @MainActor (RoutePresentation<Route>) -> Void
+    ) {
+        self.router = router
+        self.allowedHosts = allowedHosts
+        self.onPresentation = onPresentation
+    }
+
+    public func body(content: Content) -> some View {
+        content
+            .environment(
+                \.openURL,
+                router.openURLAction(allowedHosts: allowedHosts, onPresentation: onPresentation)
+            )
+            .onOpenURL { url in
+                _ = router.openURL(url, allowedHosts: allowedHosts, onPresentation: onPresentation)
+            }
+    }
+}
+
+@available(iOS 17.0, macOS 14.0, *)
+public extension View {
+    /// Connects this view hierarchy to URLRouter for in-app and system URL opens.
+    @MainActor
+    func universalLinkRouting<Route: UniversalLinkRoute>(
+        router: AppRouter<Route>,
+        allowedHosts: Set<String>,
+        onPresentation: @escaping @MainActor (RoutePresentation<Route>) -> Void
+    ) -> some View {
+        modifier(
+            UniversalLinkRoutingModifier(
+                router: router,
+                allowedHosts: allowedHosts,
+                onPresentation: onPresentation
+            )
+        )
     }
 }
 
