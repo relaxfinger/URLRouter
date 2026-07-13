@@ -104,13 +104,16 @@ Replace `TEAM_ID` and the bundle ID in this example:
 
 The file must use valid HTTPS, have no redirects, and be publicly reachable. The associated-domain entitlement and this file must agree. See Apple’s [Supporting Associated Domains](https://developer.apple.com/documentation/Xcode/supporting-associated-domains?changes=_2).
 
-### 3. Receive the URL in SwiftUI
+### 3. Let URLRouter receive URLs in SwiftUI
 
-Put `.onOpenURL` on the root view inside `WindowGroup`. The complete setup is below.
+Do not add `.onOpenURL` or override `\.openURL` in the app target for the module-registry architecture. `moduleLinkRouting` installs both entry points, validates trusted links, and delegates other URLs to the system.
 
 ## Module registry integration
 
-This is the recommended architecture for independently maintained feature packages. The presentation is part of the URL contract, not a central app `switch`:
+This is the recommended architecture for independently maintained feature packages. It makes two boundaries explicit:
+
+1. `URLRouter` owns both URL entry points: SwiftUI `openURL` calls and system-delivered Universal Links.
+2. Each Feature Package owns its URL grammar, target View, and route identity. The presentation is part of the URL contract, not a central app `switch`.
 
 ```text
 https://example.com/articles/42?presentation=push
@@ -178,6 +181,24 @@ struct MyApp: App {
 }
 ```
 
+At runtime, this becomes:
+
+```text
+Feature Button / System Universal Link
+                │
+                ▼
+       URLRouter.moduleLinkRouting
+                │ validates host, HTTPS, URL and presentation
+                ▼
+         ModuleRouteRegistry
+                │ asks registered Feature Packages
+                ▼
+  ModuleRoute + presentation style from URL
+                │
+                ▼
+ AppRouter applies push / tab / sheet / full-screen cover
+```
+
 Feature views that merely navigate only need `SwiftUI`; they call `openURL` with a complete contract URL:
 
 ```swift
@@ -242,12 +263,8 @@ struct MyApp: App {
             } destination: { route in
                 RouteDestination(route: route)
             }
-            .onOpenURL { url in
-                do {
-                    try router.handle(universalLink: url, allowedHosts: ["example.com"])
-                } catch {
-                    print("Ignored Universal Link: \(url), error: \(error)")
-                }
+            .universalLinkRouting(router: router, allowedHosts: ["example.com"]) { presentation in
+                router.apply(presentation)
             }
         }
     }
@@ -379,44 +396,11 @@ Button("Load recommended article") {
 
 Perform networking and database work in `Task`; only `router.apply` needs to return to the main actor.
 
-## Legacy modular feature packages
-
-Only the app shell needs `URLRouter`. A feature package can depend on `SwiftUI` alone and request navigation through the system `openURL` environment action:
-
-```swift
-import SwiftUI
-
-struct ArticleList: View {
-    @Environment(\.openURL) private var openURL
-
-    var body: some View {
-        Button("Open article 42") {
-            openURL(URL(string: "https://example.com/articles/42")!)
-        }
-    }
-}
-```
-
-Install URLRouter's root modifier. It handles both `openURL` actions and system-delivered Universal Links; the app only supplies its approved hosts and optional typed-presentation policy:
-
-```swift
-RouterHost(router: router) {
-    AppTabs()
-} destination: { route in
-    RouteDestination(route: route)
-}
-.universalLinkRouting(router: router, allowedHosts: ["example.com"]) { presentation in
-    router.apply(presentation)
-}
-```
-
-The feature never imports `URLRouter`, accesses `AppRouter`, or knows whether a URL becomes a push, tab, sheet, or full-screen presentation. URL validation and system URL delivery stay in URLRouter. Use the typed `presentation` closure for authentication, analytics, or error reporting; the demo protects `/articles/private` there.
-
 ## Demo app
 
 The repository includes a runnable [URLRouterDemo](URLRouterDemo) target. Open `URLRouter.xcodeproj`, select the **URLRouterDemo** scheme, choose an iOS 17+ simulator, and run it.
 
-The demo includes local push, tab, sheet, and full-screen routes; direct URL simulation; and a protected `/articles/private` route that resumes after a simulated sign-in. `example.com` is a placeholder. URL simulation does not require AASA, but device testing of real Universal Links does: replace the domain in entitlements, `allowedHosts`, and the AASA file.
+The demo includes local push, tab, sheet, and full-screen routes, each expressed with a `presentation` query value; direct URL simulation; and a `RouteModule` that owns its URL matching and views. `example.com` is a placeholder. URL simulation does not require AASA, but device testing of real Universal Links does: replace the domain in entitlements, `allowedHosts`, and the AASA file.
 
 ## Validation, errors, and security
 

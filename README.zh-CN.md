@@ -104,19 +104,40 @@ https://example.com/.well-known/apple-app-site-association
 
 文件必须使用有效 HTTPS、不能重定向、域名必须能从公网访问。关联文件与 entitlement 需要一致。详见 Apple 的 [Supporting Associated Domains](https://developer.apple.com/documentation/Xcode/supporting-associated-domains?changes=_2)。
 
-### 3. 在 SwiftUI 接收 URL
+### 3. 让 URLRouter 在 SwiftUI 中接收 URL
 
-将 `.onOpenURL` 放在 `WindowGroup` 内的根视图。完整代码见下一节。
+在模块注册表架构中，App target 不需要添加 `.onOpenURL` 或覆盖 `\.openURL`。`moduleLinkRouting` 会安装两个入口、校验可信链接，并将其他 URL 交还系统。
 
 ## 模块注册表接入
 
-这是适合独立维护 Feature Package 的推荐架构。展示方式是 URL 协议的一部分，不再由主 App 的中心化 `switch` 决定：
+这是适合独立维护 Feature Package 的推荐架构，它明确了两层边界：
+
+1. `URLRouter` 统一处理 SwiftUI `openURL` 与系统传入 Universal Link 两种入口。
+2. 每个 Feature Package 自己维护 URL 语法、目标 View 和路由标识；展示方式是 URL 协议的一部分，不再由主 App 的中心化 `switch` 决定。
 
 ```text
 https://example.com/articles/42?presentation=push
 https://example.com/favorites?presentation=tab
 https://example.com/settings?presentation=sheet
 https://example.com/sign-in?presentation=fullScreenCover
+```
+
+运行时流程如下：
+
+```text
+Feature 按钮 / 系统 Universal Link
+                │
+                ▼
+       URLRouter.moduleLinkRouting
+                │ 校验 host、HTTPS、URL 与 presentation
+                ▼
+         ModuleRouteRegistry
+                │ 查询已注册的 Feature Package
+                ▼
+  URL 中的 ModuleRoute + presentation style
+                │
+                ▼
+ AppRouter 执行 push / tab / sheet / full-screen cover
 ```
 
 `presentation` 为必填项，只接受 `push`、`tab`、`sheet`、`fullScreenCover`；缺失或非法时会被丢弃。
@@ -250,12 +271,8 @@ struct MyApp: App {
             } destination: { route in
                 RouteDestination(route: route)
             }
-            .onOpenURL { url in
-                do {
-                    try router.handle(universalLink: url, allowedHosts: ["example.com"])
-                } catch {
-                    print("Ignored Universal Link: \(url), error: \(error)")
-                }
+            .universalLinkRouting(router: router, allowedHosts: ["example.com"]) { presentation in
+                router.apply(presentation)
             }
         }
     }
@@ -406,48 +423,15 @@ Button("Load recommended article") {
 
 网络和数据库工作放在 `Task` 中；只有 `router.apply` 需要回到主线程。
 
-## 旧版模块化 Feature Package
-
-只有 App Shell 需要依赖 `URLRouter`。任意 Feature Package 只需依赖 `SwiftUI`，并通过系统提供的 `openURL` 环境动作请求跳转：
-
-```swift
-import SwiftUI
-
-struct ArticleList: View {
-    @Environment(\.openURL) private var openURL
-
-    var body: some View {
-        Button("打开文章 42") {
-            openURL(URL(string: "https://example.com/articles/42")!)
-        }
-    }
-}
-```
-
-在 App 根部安装 URLRouter 提供的修饰器。它同时处理 `openURL` 动作和系统传入的 Universal Link；App 只需提供允许域名以及可选的强类型路由策略：
-
-```swift
-RouterHost(router: router) {
-    AppTabs()
-} destination: { route in
-    RouteDestination(route: route)
-}
-.universalLinkRouting(router: router, allowedHosts: ["example.com"]) { presentation in
-    router.apply(presentation)
-}
-```
-
-Feature 无需导入 `URLRouter`、访问 `AppRouter`，也不需要知道 URL 最终是 push、Tab、sheet 还是全屏展示。URL 校验与系统 URL 分发都留在 URLRouter 中；需要登录拦截、埋点或错误提示时，只需在强类型 `presentation` 闭包中处理。Demo 已演示 `/articles/private` 的登录拦截。
-
 ## 示例应用
 
 仓库包含可直接运行的 [URLRouterDemo](URLRouterDemo) target。打开 `URLRouter.xcodeproj`，在 Scheme 菜单选择 **URLRouterDemo**，选择一个 iOS 17+ Simulator 后运行。
 
 Demo 展示：
 
-- 本地按钮触发 push、Tab、sheet 和 full-screen cover；
+- 本地按钮触发 push、Tab、sheet 和 full-screen cover，展示方式均由 `presentation` query 指定；
 - 输入 URL 后直接模拟系统传入的 Universal Link；
-- `/articles/private` 触发登录拦截，并在“登录成功”后恢复原跳转；
+- `RouteModule` 自己维护 URL 匹配和目标 View；
 - `example.com` 是占位域名。Simulator 的“Route this URL”不依赖 AASA；真机真实 Universal Link 测试前，必须替换 entitlement、`allowedHosts`、AASA 文件中的域名和 App ID。
 
 ## 校验、错误与安全
