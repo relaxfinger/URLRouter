@@ -13,8 +13,9 @@
 3. [Set up Universal Links / 配置 Universal Link](#set-up-universal-links--配置-universal-link)
 4. [Complete first integration / 完整首次接入](#complete-first-integration--完整首次接入)
 5. [Routing scenarios / 常见路由场景](#routing-scenarios--常见路由场景)
-6. [Validation, errors, and security / 校验、错误与安全](#validation-errors-and-security--校验错误与安全)
-7. [Testing and troubleshooting / 测试与排错](#testing-and-troubleshooting--测试与排错)
+6. [Demo app / 示例应用](#demo-app--示例应用)
+7. [Validation, errors, and security / 校验、错误与安全](#validation-errors-and-security--校验错误与安全)
+8. [Testing and troubleshooting / 测试与排错](#testing-and-troubleshooting--测试与排错)
 
 ## Requirements and installation / 前置条件与安装
 
@@ -373,6 +374,21 @@ Button("Load recommended article") {
 **中文**：网络和数据库工作放在 `Task` 中；只有 `router.apply` 需要回到主线程。
 
 **English**: Perform networking and database work in `Task`; only `router.apply` needs to return to the main actor.
+
+## Demo app / 示例应用
+
+仓库包含可直接运行的 [URLRouterDemo](/Users/relax/Develop/URLRouter/URLRouterDemo) target。打开 `URLRouter.xcodeproj`，在 Scheme 菜单选择 **URLRouterDemo**，选一个 iOS 17+ simulator 后运行。
+
+The repository includes a runnable [URLRouterDemo](/Users/relax/Develop/URLRouter/URLRouterDemo) target. Open `URLRouter.xcodeproj`, select the **URLRouterDemo** scheme, choose an iOS 17+ simulator, and run it.
+
+Demo 展示：
+
+- 本地按钮触发 push、Tab、sheet、full-screen cover；
+- 输入 URL 后直接模拟系统传入的 Universal Link；
+- `/articles/private` 触发登录拦截，并在“登录成功”后恢复原跳转；
+- `example.com` 是占位域名。模拟器中的“Route this URL”不依赖 AASA；真机真实 Universal Link 测试前，必须替换 entitlements、`allowedHosts` 和 AASA 文件中的域名及 App ID。
+
+The demo shows local push, tab, sheet, and full-screen routes; direct URL simulation; and a protected `/articles/private` route that resumes after a simulated sign-in. `example.com` is a placeholder. URL simulation does not require AASA, but device testing of real Universal Links does: replace the domain in entitlements, `allowedHosts`, and the AASA file.
 
 ## Validation, errors, and security / 校验、错误与安全
 
