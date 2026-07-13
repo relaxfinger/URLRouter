@@ -1,88 +1,88 @@
 # URLRouter
 
-[🇺🇸 English](README.en.md)
+[🇨🇳 Chinese](README.zh-CN.md)
 
 > iOS 17+ · Swift 6 · SwiftUI · Universal Links
 
-URLRouter 是一个面向 SwiftUI 的轻量级页面路由基础库。它先将外部 URL 转成强类型路由值，再由每个窗口自己的路由状态驱动 Tab、页面 push、sheet 和全屏页面。它不再寻找“最上层 ViewController”，因此适合多窗口和纯 SwiftUI App。
+URLRouter is a lightweight SwiftUI routing foundation. It converts external URLs into strongly typed route values, then uses scene-local state to drive tabs, pushes, sheets, and full-screen covers. It never searches for a global “top view controller”, which makes it suitable for multi-window and pure SwiftUI apps.
 
-## 目录
+## Contents
 
-1. [前置条件与安装](#前置条件与安装)
-2. [工作原理](#工作原理)
-3. [配置 Universal Link](#配置-universal-link)
-4. [完整首次接入](#完整首次接入)
-5. [常见路由场景](#常见路由场景)
-6. [示例应用](#示例应用)
-7. [校验、错误与安全](#校验错误与安全)
-8. [测试与排错](#测试与排错)
+1. [Requirements and installation](#requirements-and-installation)
+2. [How it works](#how-it-works)
+3. [Set up Universal Links](#set-up-universal-links)
+4. [Complete first integration](#complete-first-integration)
+5. [Routing scenarios](#routing-scenarios)
+6. [Demo app](#demo-app)
+7. [Validation, errors, and security](#validation-errors-and-security)
+8. [Testing and troubleshooting](#testing-and-troubleshooting)
 
-## 前置条件与安装
+## Requirements and installation
 
-- 最低系统：iOS 17。
-- 语言版本：Swift 6，建议开启 Strict Concurrency Checking。
-- UI：SwiftUI；库内部使用 `NavigationStack` 和 Observation。
+- Deployment target: iOS 17 or later.
+- Language mode: Swift 6; strict concurrency checking is recommended.
+- UI: SwiftUI. The library uses `NavigationStack` and Observation internally.
 
-### 使用 Swift Package Manager
+### Swift Package Manager
 
-在 Xcode 选择 **File > Add Package Dependencies…**，输入：
+In Xcode, choose **File > Add Package Dependencies…** and enter:
 
 ```text
 https://github.com/relaxfinger/URLRouter.git
 ```
 
-将 `URLRouter` 添加到你的 App target，然后导入模块：
+Add `URLRouter` to the app target, then import it:
 
 ```swift
 import URLRouter
 ```
 
-## 工作原理
+## How it works
 
 ```text
 https://example.com/articles/42
               │
               ▼
-UniversalLink：校验并拆分 URL
+UniversalLink: validates and splits the URL
               │
               ▼
-AppRoute.presentation(for:)：定义业务 URL 语法
+AppRoute.presentation(for:): your URL grammar
               │
               ▼
-RoutePresentation：描述展示方式
+RoutePresentation: how the route should be shown
               │
               ▼
-AppRouter：保存导航状态
+AppRouter: scene navigation state
               │
               ▼
-RouterHost：渲染为 SwiftUI 页面
+RouterHost: SwiftUI presentation
 ```
 
-`AppRoute` 是页面和参数的唯一真相来源。URL 解析只产生数据，不直接创建 View；`AppRouter` 只在主线程更新 UI 状态。
+`AppRoute` is the single source of truth for screens and parameters. URL parsing only creates data, never views. `AppRouter` updates UI state on the main actor.
 
-## 配置 Universal Link
+## Set up Universal Links
 
-URLRouter 不能替代 Apple 的 Universal Link 配置。以下三步都必须完成。
+URLRouter does not replace Apple’s Universal Link setup. Complete all three steps below.
 
-### 1. 添加 Associated Domains
+### 1. Add Associated Domains
 
-在 App target 的 **Signing & Capabilities** 中：
+In the app target’s **Signing & Capabilities** tab:
 
-1. 点击 **+ Capability**。
-2. 添加 **Associated Domains**。
-3. 在 Domains 列表加入 `applinks:example.com`。
+1. Click **+ Capability**.
+2. Add **Associated Domains**.
+3. Add `applinks:example.com` to the Domains list.
 
-只填写域名，不要带 `https://`、路径、query 或结尾的 `/`。`example.com` 和 `www.example.com` 是不同域名，需要时都要添加。
+Enter only the domain: no `https://`, path, query, or trailing `/`. `example.com` and `www.example.com` are different domains, and both must be listed when needed.
 
-### 2. 部署 apple-app-site-association
+### 2. Host apple-app-site-association
 
-在服务器公开部署无扩展名文件：
+Publish an extensionless file at:
 
 ```text
 https://example.com/.well-known/apple-app-site-association
 ```
 
-示例，请替换 `TEAM_ID` 和 bundle ID：
+Replace `TEAM_ID` and the bundle ID in this example:
 
 ```json
 {
@@ -101,17 +101,17 @@ https://example.com/.well-known/apple-app-site-association
 }
 ```
 
-文件必须使用有效 HTTPS、不能重定向、域名必须能从公网访问。关联文件与 entitlement 需要一致。详见 Apple 的 [Supporting Associated Domains](https://developer.apple.com/documentation/Xcode/supporting-associated-domains?changes=_2)。
+The file must use valid HTTPS, have no redirects, and be publicly reachable. The associated-domain entitlement and this file must agree. See Apple’s [Supporting Associated Domains](https://developer.apple.com/documentation/Xcode/supporting-associated-domains?changes=_2).
 
-### 3. 在 SwiftUI 接收 URL
+### 3. Receive the URL in SwiftUI
 
-将 `.onOpenURL` 放在 `WindowGroup` 内的根视图。完整代码见下一节。
+Put `.onOpenURL` on the root view inside `WindowGroup`. The complete setup is below.
 
-## 完整首次接入
+## Complete first integration
 
-下面的例子包含首页 Tab、文章详情、设置 sheet 和全屏登录页。请将 `example.com` 替换为你的真实域名。
+This example contains a home tab, article details, a settings sheet, and a full-screen sign-in screen. Replace `example.com` with your domain.
 
-### 第一步：定义路由
+### Step 1: Define routes
 
 ```swift
 import URLRouter
@@ -124,31 +124,23 @@ enum AppRoute: Hashable, Sendable, UniversalLinkRoute {
     case signIn
 
     static func presentation(for link: UniversalLink) throws -> RoutePresentation<AppRoute> {
-        if link.pathComponents.isEmpty {
-            return .selectTab(.home)
-        }
-        if link.pathComponents == ["favorites"] {
-            return .selectTab(.favorites)
-        }
+        if link.pathComponents.isEmpty { return .selectTab(.home) }
+        if link.pathComponents == ["favorites"] { return .selectTab(.favorites) }
         if link.pathComponents.count == 2,
            link.pathComponents[0] == "articles",
            !link.pathComponents[1].isEmpty {
             return .push(.article(id: link.pathComponents[1]))
         }
-        if link.pathComponents == ["settings"] {
-            return .sheet(.settings)
-        }
-        if link.pathComponents == ["sign-in"] {
-            return .fullScreenCover(.signIn)
-        }
+        if link.pathComponents == ["settings"] { return .sheet(.settings) }
+        if link.pathComponents == ["sign-in"] { return .fullScreenCover(.signIn) }
         throw UniversalLinkError.unsupportedRoute
     }
 }
 ```
 
-这是唯一需要认识 URL 路径的地方。`/articles/42` 中的 `42` 会成为 `.article(id:)` 的参数。不能识别的 URL 应抛出 `unsupportedRoute`，不要静默跳转到首页。
+This is the only place that needs to know URL paths. The `42` in `/articles/42` becomes the `.article(id:)` parameter. Throw `unsupportedRoute` for unknown URLs instead of silently navigating home.
 
-### 第二步：为每个窗口创建 router
+### Step 2: Create one router per window
 
 ```swift
 import SwiftUI
@@ -177,9 +169,9 @@ struct MyApp: App {
 }
 ```
 
-不要创建 `static let shared` 全局 router。每个 `WindowGroup` 应拥有自己的 `AppRouter`，这样 iPad 多窗口不会互相修改导航栈。
+Do not create a global `static let shared` router. Each `WindowGroup` needs its own `AppRouter`, so separate iPad windows cannot alter each other’s navigation state.
 
-### 第三步：实现 Tab 和目标页面
+### Step 3: Build tabs and destinations
 
 ```swift
 struct AppTabs: View {
@@ -190,7 +182,6 @@ struct AppTabs: View {
             HomeView(router: router)
                 .tabItem { Label("Home", systemImage: "house") }
                 .tag(Optional(AppRoute.home))
-
             FavoritesView()
                 .tabItem { Label("Favorites", systemImage: "heart") }
                 .tag(Optional(AppRoute.favorites))
@@ -211,80 +202,64 @@ struct RouteDestination: View {
         }
     }
 }
-
-struct HomeView: View {
-    let router: AppRouter<AppRoute>
-
-    var body: some View {
-        Button("Open article 42") {
-            router.apply(.push(.article(id: "42")))
-        }
-    }
-}
 ```
 
-`RouterHost` 已经创建了 `NavigationStack`，不要再在 `HomeView` 中嵌套新的 `NavigationStack`。
+`RouterHost` already creates `NavigationStack`; do not nest another `NavigationStack` inside `HomeView`.
 
-## 常见路由场景
+## Routing scenarios
 
-以下例子假设当前 View 已拿到 `let router: AppRouter<AppRoute>`。
+Assume the current view has `let router: AppRouter<AppRoute>`.
 
-### Push 到详情页
+### Push a detail page
 
 ```swift
 router.apply(.push(.article(id: "42")))
 ```
 
-这会把文章追加到 `NavigationStack`。用户可以使用系统返回按钮或边缘滑动返回。
+The route is appended to `NavigationStack`. Users return using the system back button or edge-swipe gesture.
 
-### 切换 Tab
+### Switch tabs
 
 ```swift
-// 切换到收藏，并清空当前 push 栈。
 router.apply(.selectTab(.favorites))
-
-// 切换 Tab 时保留当前 push 栈。
 router.apply(.selectTab(.favorites, resetNavigation: false))
 ```
 
-Tab 的 `.tag` 必须使用 `Optional(AppRoute.favorites)`，因为 `selectedTab` 的类型是 `AppRoute?`。
+The tab tag must be `Optional(AppRoute.favorites)` because `selectedTab` is `AppRoute?`.
 
-### 展示与关闭设置 Sheet
+### Present and dismiss a sheet
 
 ```swift
 router.apply(.sheet(.settings))
 router.dismissSheet()
 ```
 
-用户下滑关闭 sheet 时，`RouterHost` 也会自动清除状态。
+When the user swipes down, `RouterHost` clears the sheet state automatically.
 
-### 展示全屏流程
+### Present a full-screen flow
 
 ```swift
 router.apply(.fullScreenCover(.signIn))
-
-// 登录成功后
 router.dismissFullScreenCover()
 ```
 
-适合登录、首次引导、支付等不希望用户看到底层内容的流程。
+Use this for sign-in, onboarding, payment, or flows that should fully cover the underlying content.
 
-### 替换整个导航栈
+### Replace the navigation stack
 
 ```swift
 router.apply(.replaceStack([
     .article(id: "42"),
     .article(id: "43")
 ]))
-
 router.popToRoot()
 ```
 
-`replaceStack` 适合状态恢复或一次性跳转到明确的层级；普通点击跳转优先使用 `.push`。
+Use `replaceStack` for restoration or a jump to a known hierarchy. Prefer `.push` for ordinary taps.
 
-### 对需要登录的链接做拦截
+### Guard a protected link
 
-先解析并校验 URL，再决定是否允许最终路由。不要因为 URL 带有用户 ID 就信任它；仍需使用会话或服务端验证权限。
+Parse and validate the URL first. A user ID in a URL is not authorization; validate permissions with the session or server.
 
 ```swift
 @MainActor
@@ -292,13 +267,11 @@ func openProtectedLink(_ url: URL, router: AppRouter<AppRoute>, isSignedIn: Bool
     do {
         let link = try UniversalLink(url: url, allowedHosts: ["example.com"])
         let presentation = try AppRoute.presentation(for: link)
-
         guard isSignedIn else {
-            // 真实项目中保存 presentation；登录成功后再执行它。
+            // Store presentation and apply it after a successful sign-in.
             router.apply(.fullScreenCover(.signIn))
             return
         }
-
         router.apply(presentation)
     } catch {
         print("Rejected link: \(error)")
@@ -306,7 +279,7 @@ func openProtectedLink(_ url: URL, router: AppRouter<AppRoute>, isSignedIn: Bool
 }
 ```
 
-### 异步任务完成后跳转
+### Navigate after asynchronous work
 
 ```swift
 Button("Load recommended article") {
@@ -319,53 +292,46 @@ Button("Load recommended article") {
 }
 ```
 
-网络和数据库工作放在 `Task` 中；只有 `router.apply` 需要回到主线程。
+Perform networking and database work in `Task`; only `router.apply` needs to return to the main actor.
 
-## 示例应用
+## Demo app
 
-仓库包含可直接运行的 [URLRouterDemo](URLRouterDemo) target。打开 `URLRouter.xcodeproj`，在 Scheme 菜单选择 **URLRouterDemo**，选择一个 iOS 17+ Simulator 后运行。
+The repository includes a runnable [URLRouterDemo](URLRouterDemo) target. Open `URLRouter.xcodeproj`, select the **URLRouterDemo** scheme, choose an iOS 17+ simulator, and run it.
 
-Demo 展示：
+The demo includes local push, tab, sheet, and full-screen routes; direct URL simulation; and a protected `/articles/private` route that resumes after a simulated sign-in. `example.com` is a placeholder. URL simulation does not require AASA, but device testing of real Universal Links does: replace the domain in entitlements, `allowedHosts`, and the AASA file.
 
-- 本地按钮触发 push、Tab、sheet 和 full-screen cover；
-- 输入 URL 后直接模拟系统传入的 Universal Link；
-- `/articles/private` 触发登录拦截，并在“登录成功”后恢复原跳转；
-- `example.com` 是占位域名。Simulator 的“Route this URL”不依赖 AASA；真机真实 Universal Link 测试前，必须替换 entitlement、`allowedHosts`、AASA 文件中的域名和 App ID。
+## Validation, errors, and security
 
-## 校验、错误与安全
+`UniversalLink(url:allowedHosts:)` checks the following before routing:
 
-`UniversalLink(url:allowedHosts:)` 会在路由前检查：
-
-| 检查项 | 原因 |
+| Check | Reason |
 | --- | --- |
-| 仅 HTTPS | Universal Link 必须使用 HTTPS。 |
-| 精确允许的 host | 拒绝未受信任域名。 |
-| 禁止凭据与非默认端口 | 避免歧义和危险 URL。 |
-| 禁止 fragment | 保持唯一规范输入。 |
-| 解码 path segment | 防止编码 `/` 改变路径结构。 |
-| query 必须唯一且有值 | 避免 `?id=1&id=2` 的歧义。 |
-
-可以针对具体错误处理：
+| HTTPS only | Universal Links require HTTPS. |
+| Exact allowed host | Rejects untrusted domains. |
+| No credentials or non-default port | Avoids ambiguous and unsafe URL forms. |
+| No fragment | Maintains one canonical routing input. |
+| Decoded path segments | Prevents encoded `/` from changing the route hierarchy. |
+| Unique query values | Avoids ambiguous inputs such as `?id=1&id=2`. |
 
 ```swift
 do {
     try router.handle(universalLink: url, allowedHosts: ["example.com"])
 } catch UniversalLinkError.untrustedHost {
-    // 忽略，并按需记录安全事件。
+    // Ignore and optionally log a security event.
 } catch UniversalLinkError.unsupportedRoute {
-    // 按需展示“链接已失效”。
+    // Show a friendly unavailable-link screen if appropriate.
 } catch {
-    // 记录格式错误的链接，供排错使用。
+    // Log malformed links for diagnostics.
 }
 ```
 
-Apple 建议将 Universal Link 作为外部输入并校验所有参数：[Supporting Universal Links in Your App](https://developer.apple.com/documentation/xcode/supporting-universal-links-in-your-app?language=objc)。
+Apple recommends treating Universal Links as external input and validating every parameter: [Supporting Universal Links in Your App](https://developer.apple.com/documentation/xcode/supporting-universal-links-in-your-app?language=objc).
 
-## 测试与排错
+## Testing and troubleshooting
 
-### 测试 URL 语法
+### Test URL grammar
 
-路由 enum 是纯数据逻辑，无需启动 App 即可测试：
+Your route enum is pure data logic, so it can be tested without launching the app:
 
 ```swift
 func testArticleLinkBecomesPush() throws {
@@ -373,7 +339,6 @@ func testArticleLinkBecomesPush() throws {
         url: try XCTUnwrap(URL(string: "https://example.com/articles/42")),
         allowedHosts: ["example.com"]
     )
-
     let presentation = try AppRoute.presentation(for: link)
     if case .push(.article(let id)) = presentation {
         XCTAssertEqual(id, "42")
@@ -383,25 +348,25 @@ func testArticleLinkBecomesPush() throws {
 }
 ```
 
-### 在真机测试 Universal Link
+### Test a Universal Link on a device
 
-1. 确认 AASA 文件可直接访问：`https://example.com/.well-known/apple-app-site-association`。
-2. 删除并重新安装 App。
-3. 将完整链接粘贴到“备忘录”或“信息”中，点击或长按测试。
-4. 不要只在 Safari 地址栏手动输入 URL；这通常仍被视为浏览器内直接导航。
+1. Verify that `https://example.com/.well-known/apple-app-site-association` is reachable.
+2. Delete and reinstall the app.
+3. Paste the complete URL into Notes or Messages, then tap or long-press it.
+4. Do not only type the URL in Safari’s address bar; that is normally treated as browser navigation.
 
-Apple 的 [TN3155: Debugging Universal Links](https://developer.apple.com/documentation/technotes/tn3155-debugging-universal-links/) 提供了更多真机诊断步骤。
+Apple’s [TN3155: Debugging Universal Links](https://developer.apple.com/documentation/technotes/tn3155-debugging-universal-links/) has additional device diagnostics.
 
-### 常见错误
+### Common problems
 
-| 现象 | 检查项 |
+| Symptom | Check |
 | --- | --- |
-| 链接打开 Safari | 检查 Associated Domains、AASA 的 `appIDs`、HTTPS、无重定向，并重新安装 App。 |
-| `.onOpenURL` 已调用但页面不变 | 检查 `allowedHosts`、`pathComponents` 和 `AppRoute.presentation(for:)` 抛出的错误。 |
-| 详情页展示两次 | 不要在 feature View 内和 `RouterHost` 外分别创建 `NavigationStack`。 |
-| Tab 选择错误 | 使用 `Optional(AppRoute.someTab)` 作为 `.tag`。 |
-| 后台任务中的跳转失败 | 使用 `await MainActor.run { router.apply(...) }` 更新 router。 |
+| Link opens Safari | Check Associated Domains, AASA `appIDs`, HTTPS, redirects, then reinstall the app. |
+| `.onOpenURL` runs but no page changes | Check `allowedHosts`, `pathComponents`, and errors from `AppRoute.presentation(for:)`. |
+| A detail page appears twice | Do not create separate `NavigationStack` instances in both a feature view and `RouterHost`. |
+| Wrong tab is selected | Use `Optional(AppRoute.someTab)` as the `.tag`. |
+| A background-task navigation fails | Update the router inside `await MainActor.run { router.apply(...) }`. |
 
-## 许可证
+## License
 
-URLRouter 使用 [MIT License](LICENSE) 发布。你可以自由使用、复制、修改、分发及用于商业项目；分发代码或其重要部分时，请保留版权与许可证声明。软件按“原样”提供，不附带任何担保。详见 [LICENSE](LICENSE)。
+URLRouter is released under the [MIT License](LICENSE). You may use, copy, modify, distribute, and use it in commercial projects. Preserve the copyright and license notices when distributing the software or substantial portions of it. See [LICENSE](LICENSE) for the full terms.
