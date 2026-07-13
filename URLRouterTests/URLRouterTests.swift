@@ -1,34 +1,55 @@
-//
-//  URLRouterTests.swift
-//  URLRouterTests
-//
-//  Created by relaxfinger on 2020/4/19.
-//  Copyright © 2020 relaxfinger. All rights reserved.
-//
-
 import XCTest
 @testable import URLRouter
 
-class URLRouterTests: XCTestCase {
+final class URLRouterTests: XCTestCase {
+    private enum TestRoute: Hashable, Sendable, UniversalLinkRoute {
+        case home, product(id: String), settings
 
-    override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
-    }
-
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
-    }
-
-    func testExample() throws {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-    }
-
-    func testPerformanceExample() throws {
-        // This is an example of a performance test case.
-        self.measure {
-            // Put the code you want to measure the time of here.
+        static func presentation(for link: UniversalLink) throws -> RoutePresentation<TestRoute> {
+            if link.pathComponents.isEmpty { return .selectTab(.home) }
+            if link.pathComponents.count == 2,
+               link.pathComponents[0] == "products",
+               !link.pathComponents[1].isEmpty {
+                return .push(.product(id: link.pathComponents[1]))
+            }
+            if link.pathComponents == ["settings"] { return .sheet(.settings) }
+            throw UniversalLinkError.unsupportedRoute
         }
     }
 
+    func testParsesTrustedProductUniversalLink() throws {
+        let link = try UniversalLink(
+            url: try XCTUnwrap(URL(string: "https://example.com/products/sku-42?ref=mail")),
+            allowedHosts: ["example.com"]
+        )
+        XCTAssertEqual(link.host, "example.com")
+        XCTAssertEqual(link.pathComponents, ["products", "sku-42"])
+        XCTAssertEqual(link.query, ["ref": "mail"])
+    }
+
+    func testRejectsPartialPathAndUntrustedHost() throws {
+        XCTAssertThrowsError(try UniversalLink(
+            url: try XCTUnwrap(URL(string: "https://evil.example/products/sku-42")),
+            allowedHosts: ["example.com"]
+        ))
+        let link = try UniversalLink(
+            url: try XCTUnwrap(URL(string: "https://example.com/products")),
+            allowedHosts: ["example.com"]
+        )
+        XCTAssertThrowsError(try TestRoute.presentation(for: link))
+    }
+
+    @MainActor
+    func testRouterOwnsPushAndPresentationState() throws {
+        let router = AppRouter<TestRoute>()
+        try router.handle(
+            universalLink: try XCTUnwrap(URL(string: "https://example.com/products/sku-42")),
+            allowedHosts: ["example.com"]
+        )
+        XCTAssertEqual(router.path, [.product(id: "sku-42")])
+        router.apply(.sheet(.settings))
+        XCTAssertEqual(router.sheet, .settings)
+        router.dismissSheet()
+        XCTAssertNil(router.sheet)
+    }
 }

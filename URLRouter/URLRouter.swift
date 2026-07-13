@@ -1,144 +1,80 @@
-//
-//  URLRouter.swift
-//  URLRouter
-//
-//  Created by relaxfinger on 2020/4/19.
-//  Copyright © 2020 relaxfinger. All rights reserved.
-//
+import Observation
+import SwiftUI
 
-import UIKit
-import Foundation
+/// The single source of truth for one app scene's navigation state.
+@available(iOS 17.0, macOS 14.0, *)
+@MainActor
+@Observable
+public final class AppRouter<Route: Hashable & Sendable> {
+    /// Bind this to `NavigationStack(path:)`.
+    public var path: [Route] = []
+    /// Bind this to a `TabView` selection when the app uses tabs.
+    public var selectedTab: Route?
+    public private(set) var sheet: Route?
+    public private(set) var fullScreenCover: Route?
 
-public typealias ViewControllerFactory = (_ url: URL, _ paramters: [String: Any], _ completion: CompletionHandler?) -> UIViewController?
-public typealias CompletionHandler = (_ values: [String: Any]?) -> Void
+    public init() {}
 
-public enum Transition {
-    case push
-    case modal(UIModalPresentationStyle)
-    case select(Int)
-};
-
-public protocol Callbackable {
-    var completion: CompletionHandler? { get }
-}
-
-public protocol Destination {
-    var transition: Transition { get }
-    var controller: ViewControllerFactory { get }
-}
-
-open class URLRouter: Router<Destination> {
-    public static let shared = URLRouter()
-    
-    @discardableResult
-    public func open(_ url: URL, completion: CompletionHandler? = nil) -> Bool {
-        guard UIApplication.shared.canOpenURL(url) else {
-            return false
-        }
-        
-        if #available(iOS 10.0, *) {
-            UIApplication.shared.open(url, options: [UIApplication.OpenExternalURLOptionsKey(rawValue: "source") : "URLRouter"], completionHandler: nil)
-        } else {
-            UIApplication.shared.openURL(url)
-        }
-        
-        for i in 0..<self.routes.count {
-            if self.routes[i].find(for: url) {
-                self.routes[i].completion = completion
-            }
-        }
-        
-        return true
-    }
-    
-    @discardableResult
-    public func open(_ urlString: String, completion: CompletionHandler? = nil) -> Bool {
-        guard let url = URL(string: urlString) else {
-            return false
-        }
-        
-        return open(url, completion: completion)
-    }
-    
-    @discardableResult
-    public func route(_ url: URL) -> Bool {
-        guard let match = self.match(for: url) else { return false }
-        guard let topViewController = UIViewController.topMost else { return false }
-        
-        switch match.destination.transition {
-        case .select(let index):
-            return switchTo(topViewController, index: index)
-        default:
-            guard let viewController = match.destination.controller(url, match.parameters, match.completion) else { return false }
-            return topViewController.route(viewController, match.destination.transition)
+    public func apply(_ presentation: RoutePresentation<Route>) {
+        switch presentation {
+        case .push(let route): path.append(route)
+        case .replaceStack(let routes): path = routes
+        case .selectTab(let route, let resetNavigation):
+            selectedTab = route
+            if resetNavigation { path.removeAll() }
+        case .sheet(let route): sheet = route
+        case .fullScreenCover(let route): fullScreenCover = route
         }
     }
-    
-    @discardableResult
-    public func close(_ url: URL, animated: Bool) -> Bool {
-        guard let match = self.match(for: url) else { return false }
-        guard let topViewController = UIViewController.topMost else { return false }
-        
-        switch match.destination.transition {
-        case .push:
-            guard let navigationController = topViewController.navigationController else { return false }
-            navigationController.popViewController(animated: animated)
-        case .modal:
-            topViewController.dismissKeyBoard()
-            topViewController.dismiss(animated: animated, completion: nil)
-        default:
-            return false
-        }
-        
-        return true
-    }
-    
-    fileprivate func switchTo(_ controller: UIViewController, index: Int) -> Bool {
-        if let tabbarController = controller as? UITabBarController {
-            tabbarController.selectedIndex = index
-        } else if let tabbarController = controller.tabBarController {
-            tabbarController.selectedIndex = index
-        } else {
-            return false
-        }
-        
-        return true
+
+    public func dismissSheet() { sheet = nil }
+    public func dismissFullScreenCover() { fullScreenCover = nil }
+    public func popToRoot() { path.removeAll() }
+
+    /// Use from `.onOpenURL`, a scene delegate, a notification, or an App Intent handoff.
+    public func handle(universalLink url: URL, allowedHosts: Set<String>) throws where Route: UniversalLinkRoute {
+        let link = try UniversalLink(url: url, allowedHosts: allowedHosts)
+        apply(try Route.presentation(for: link))
     }
 }
 
-extension UIViewController {
-    @discardableResult
-    func route(_ viewController: UIViewController, _ transition: Transition) -> Bool {
-        switch transition {
-        case .push:
-            if let navigationController = self as? UINavigationController {
-                viewController.hidesBottomBarWhenPushed = true
-                navigationController.pushViewController(viewController, animated: true)
-            } else if let navigationController = self.navigationController {
-                viewController.hidesBottomBarWhenPushed = true
-                navigationController.pushViewController(viewController, animated: true)
-            } else {
-                let navigationController = UINavigationController(rootViewController: viewController)
-                viewController.navigationItem.leftBarButtonItem = UIBarButtonItem(barButtonSystemItem: .cancel, target: self, action: #selector(cancel))
-                
-                self.present(navigationController, animated: true, completion: nil)
-            }
-        case .modal(let style):
-            viewController.modalPresentationStyle = style
-            self.present(viewController, animated: true, completion: nil)
-        
-        default:
-            return false
+/// A reusable SwiftUI shell for push, sheet, and full-screen-cover routes.
+#if os(iOS)
+@available(iOS 17.0, *)
+@MainActor
+public struct RouterHost<Route: Hashable & Sendable, Root: View, Destination: View>: View {
+    @Bindable private var router: AppRouter<Route>
+    private let root: () -> Root
+    private let destination: (Route) -> Destination
+
+    public init(
+        router: AppRouter<Route>,
+        @ViewBuilder root: @escaping () -> Root,
+        @ViewBuilder destination: @escaping (Route) -> Destination
+    ) {
+        self.router = router
+        self.root = root
+        self.destination = destination
+    }
+
+    public var body: some View {
+        NavigationStack(path: $router.path) {
+            root().navigationDestination(for: Route.self, destination: destination)
         }
-        
-        return true
+        .sheet(isPresented: sheetIsPresented) {
+            if let route = router.sheet { destination(route) }
+        }
+        .fullScreenCover(isPresented: fullScreenCoverIsPresented) {
+            if let route = router.fullScreenCover { destination(route) }
+        }
     }
-    
-    @IBAction func cancel() {
-        self.presentingViewController?.dismiss(animated: true, completion: nil)
+
+    private var sheetIsPresented: Binding<Bool> {
+        Binding(get: { router.sheet != nil }, set: { if !$0 { router.dismissSheet() } })
     }
-    
-    fileprivate func dismissKeyBoard() {
-        UIApplication.shared.sendAction(#selector(resignFirstResponder), to: nil, from: nil, for: nil)
+
+    private var fullScreenCoverIsPresented: Binding<Bool> {
+        Binding(get: { router.fullScreenCover != nil }, set: { if !$0 { router.dismissFullScreenCover() } })
     }
 }
+#endif
