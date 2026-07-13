@@ -10,50 +10,37 @@ import SwiftUI
 import URLRouter
 
 struct DemoTabs: View {
-    @Bindable private var router: AppRouter<DemoRoute>
-    private let session: DemoSession
+    @Bindable private var router: AppRouter<ModuleRoute>
 
-    init(router: AppRouter<DemoRoute>, session: DemoSession) {
+    init(router: AppRouter<ModuleRoute>) {
         self.router = router
-        self.session = session
     }
 
     var body: some View {
         TabView(selection: $router.selectedTab) {
             NavigationDemoView()
                 .tabItem { Label("Home", systemImage: "house") }
-                .tag(Optional(DemoRoute.home))
+                .tag(Optional(DemoFeatureModule.home))
 
             FavoritesView()
                 .tabItem { Label("Favorites", systemImage: "heart") }
-                .tag(Optional(DemoRoute.favorites))
+                .tag(Optional(DemoFeatureModule.favorites))
         }
     }
 }
 
 struct DemoDestination: View {
-    let route: DemoRoute
-    let router: AppRouter<DemoRoute>
-    let session: DemoSession
+    let route: ModuleRoute
+    let router: AppRouter<ModuleRoute>
 
     @ViewBuilder
     var body: some View {
-        switch route {
-        case .article(let id):
-            ArticleView(id: id)
-        case .settings:
-            SettingsView()
-        case .signIn:
-            SignInView(router: router, session: session)
-        case .home, .favorites:
-            EmptyView()
-        }
+        DemoFeatureModule.registry.destination(for: route)
     }
 }
 
 struct SignInView: View {
-    let router: AppRouter<DemoRoute>
-    let session: DemoSession
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         VStack(spacing: 20) {
@@ -65,19 +52,12 @@ struct SignInView: View {
                 .foregroundStyle(.secondary)
 
             Button("Simulate successful sign in") {
-                session.isSignedIn = true
-                let pending = session.pendingPresentation
-                session.pendingPresentation = nil
-                router.dismissFullScreenCover()
-                if let pending {
-                    router.apply(pending)
-                }
+                dismiss()
             }
             .buttonStyle(.borderedProminent)
 
             Button("Cancel") {
-                session.pendingPresentation = nil
-                router.dismissFullScreenCover()
+                dismiss()
             }
         }
         .padding()

@@ -11,9 +11,9 @@ URLRouter is a lightweight SwiftUI routing foundation. It converts external URLs
 1. [Requirements and installation](#requirements-and-installation)
 2. [How it works](#how-it-works)
 3. [Set up Universal Links](#set-up-universal-links)
-4. [Complete first integration](#complete-first-integration)
-5. [Routing scenarios](#routing-scenarios)
-6. [Modular feature packages](#modular-feature-packages)
+4. [Module registry integration](#module-registry-integration)
+5. [Legacy typed-route integration](#legacy-typed-route-integration)
+6. [Routing scenarios](#routing-scenarios)
 7. [Demo app](#demo-app)
 8. [Validation, errors, and security](#validation-errors-and-security)
 9. [Testing and troubleshooting](#testing-and-troubleshooting)
@@ -47,10 +47,10 @@ https://example.com/articles/42
 UniversalLink: validates and splits the URL
               │
               ▼
-AppRoute.presentation(for:): your URL grammar
+RouteModule: feature-owned URL grammar and view factory
               │
               ▼
-RoutePresentation: how the route should be shown
+presentation query item: how the route should be shown
               │
               ▼
 AppRouter: scene navigation state
@@ -59,7 +59,7 @@ AppRouter: scene navigation state
 RouterHost: SwiftUI presentation
 ```
 
-`AppRoute` is the single source of truth for screens and parameters. URL parsing only creates data, never views. `AppRouter` updates UI state on the main actor.
+For modular apps, each feature owns its URL grammar and destination factory through `RouteModule`. The URL includes the presentation contract; `URLRouter` validates, resolves, and applies it on the main actor.
 
 ## Set up Universal Links
 
@@ -108,7 +108,91 @@ The file must use valid HTTPS, have no redirects, and be publicly reachable. The
 
 Put `.onOpenURL` on the root view inside `WindowGroup`. The complete setup is below.
 
-## Complete first integration
+## Module registry integration
+
+This is the recommended architecture for independently maintained feature packages. The presentation is part of the URL contract, not a central app `switch`:
+
+```text
+https://example.com/articles/42?presentation=push
+https://example.com/favorites?presentation=tab
+https://example.com/settings?presentation=sheet
+https://example.com/sign-in?presentation=fullScreenCover
+```
+
+`presentation` is required and accepts exactly `push`, `tab`, `sheet`, or `fullScreenCover`. Invalid or missing values are discarded.
+
+### Step 1: Register routes in the feature package
+
+The feature package owns path matching and its destination views. The app never parses `/articles/*`.
+
+```swift
+import SwiftUI
+import URLRouter
+
+enum ArticleFeature {
+    static let id = "articles"
+
+    static let module = RouteModule(
+        id: id,
+        resolve: { link in
+            guard link.pathComponents.count == 2,
+                  link.pathComponents[0] == "articles" else { return nil }
+            return ModuleRoute(
+                moduleID: id,
+                routeID: "detail",
+                parameters: ["id": link.pathComponents[1]]
+            )
+        },
+        destination: { route in
+            guard route.routeID == "detail" else { return nil }
+            return AnyView(ArticleView(id: route.parameters["id"] ?? ""))
+        }
+    )
+}
+```
+
+### Step 2: Assemble modules once in the app shell
+
+The app links feature packages and supplies their modules to a registry. It does not contain URL path or presentation mappings.
+
+```swift
+@main
+struct MyApp: App {
+    @State private var router = AppRouter<ModuleRoute>()
+    private let registry = ModuleRouteRegistry(modules: [ArticleFeature.module])
+
+    var body: some Scene {
+        WindowGroup {
+            RouterHost(router: router) {
+                AppTabs(router: router)
+            } destination: { route in
+                registry.destination(for: route)
+            }
+            .moduleLinkRouting(
+                router: router,
+                registry: registry,
+                allowedHosts: ["example.com"]
+            )
+        }
+    }
+}
+```
+
+Feature views that merely navigate only need `SwiftUI`; they call `openURL` with a complete contract URL:
+
+```swift
+@Environment(\.openURL) private var openURL
+
+Button("Open article") {
+    openURL(URL(string: "https://example.com/articles/42?presentation=push")!)
+}
+```
+
+Swift packages cannot be discovered unless they are linked into the app, so adding a new package still requires adding its package dependency/module registration. It never requires changing a central URL-to-screen `switch`.
+
+## Legacy typed-route integration
+
+`UniversalLinkRoute`, `RoutePresentation`, and `universalLinkRouting` remain available for small apps or migrations. They centralize the URL grammar in one route enum; use the module registry above for independently evolving packages.
 
 This example contains a home tab, article details, a settings sheet, and a full-screen sign-in screen. Replace `example.com` with your domain.
 
@@ -295,7 +379,7 @@ Button("Load recommended article") {
 
 Perform networking and database work in `Task`; only `router.apply` needs to return to the main actor.
 
-## Modular feature packages
+## Legacy modular feature packages
 
 Only the app shell needs `URLRouter`. A feature package can depend on `SwiftUI` alone and request navigation through the system `openURL` environment action:
 

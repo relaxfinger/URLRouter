@@ -6,86 +6,54 @@
 //  SPDX-License-Identifier: MIT
 //
 
-import Observation
 import SwiftUI
 import URLRouter
 
 @main
 struct URLRouterDemoApp: App {
-    @State private var router = AppRouter<DemoRoute>()
-    @State private var session = DemoSession()
+    @State private var router = AppRouter<ModuleRoute>()
 
     var body: some Scene {
         WindowGroup {
             RouterHost(router: router) {
-                DemoTabs(router: router, session: session)
+                DemoTabs(router: router)
             } destination: { route in
-                DemoDestination(route: route, router: router, session: session)
+                DemoDestination(route: route, router: router)
             }
-            .universalLinkRouting(router: router, allowedHosts: ["example.com"]) { presentation in
-                DemoNavigationPolicy.apply(presentation, router: router, session: session)
-            }
+            .moduleLinkRouting(router: router, registry: DemoFeatureModule.registry, allowedHosts: ["example.com"])
         }
     }
 
 }
 
 @MainActor
-enum DemoNavigationPolicy {
-    static func apply(
-        _ presentation: RoutePresentation<DemoRoute>,
-        router: AppRouter<DemoRoute>,
-        session: DemoSession
-    ) {
-        if isProtected(presentation), !session.isSignedIn {
-            session.pendingPresentation = presentation
-            router.apply(.fullScreenCover(.signIn))
-        } else {
-            router.apply(presentation)
-        }
-    }
+enum DemoFeatureModule {
+    static let id = "demo"
+    static let home = ModuleRoute(moduleID: id, routeID: "home")
+    static let favorites = ModuleRoute(moduleID: id, routeID: "favorites")
+    static let settings = ModuleRoute(moduleID: id, routeID: "settings")
+    static let signIn = ModuleRoute(moduleID: id, routeID: "signIn")
 
-    private static func isProtected(_ presentation: RoutePresentation<DemoRoute>) -> Bool {
-        if case .push(.article(id: "private")) = presentation {
-            return true
+    static let registry = ModuleRouteRegistry(modules: [
+        RouteModule(id: id) { link in
+            switch link.pathComponents {
+            case []: return home
+            case ["favorites"]: return favorites
+            case ["settings"]: return settings
+            case ["sign-in"]: return signIn
+            default:
+                guard link.pathComponents.count == 2,
+                      link.pathComponents[0] == "articles",
+                      !link.pathComponents[1].isEmpty else { return nil }
+                return ModuleRoute(moduleID: id, routeID: "article", parameters: ["id": link.pathComponents[1]])
+            }
+        } destination: { route in
+            switch route.routeID {
+            case "article": AnyView(ArticleView(id: route.parameters["id"] ?? ""))
+            case "settings": AnyView(SettingsView())
+            case "signIn": AnyView(SignInView())
+            default: nil
+            }
         }
-        return false
-    }
-}
-
-enum DemoRoute: Hashable, Sendable, UniversalLinkRoute {
-    case home
-    case favorites
-    case article(id: String)
-    case settings
-    case signIn
-
-    static func presentation(for link: UniversalLink) throws -> RoutePresentation<DemoRoute> {
-        if link.pathComponents.isEmpty {
-            return .selectTab(.home)
-        }
-        if link.pathComponents == ["favorites"] {
-            return .selectTab(.favorites)
-        }
-        if link.pathComponents.count == 2,
-           link.pathComponents[0] == "articles",
-           !link.pathComponents[1].isEmpty {
-            return .push(.article(id: link.pathComponents[1]))
-        }
-        if link.pathComponents == ["settings"] {
-            return .sheet(.settings)
-        }
-        if link.pathComponents == ["sign-in"] {
-            return .fullScreenCover(.signIn)
-        }
-        throw UniversalLinkError.unsupportedRoute
-    }
-}
-
-@MainActor
-@Observable
-final class DemoSession {
-    var isSignedIn = false
-    var pendingPresentation: RoutePresentation<DemoRoute>?
-    var lastError: String?
+    ])
 }

@@ -15,12 +15,12 @@ enum DemoLinks {
     static let host = "https://example.com"
 
     static func article(_ id: String) -> URL {
-        URL(string: "\(host)/articles/\(id)")!
+        URL(string: "\(host)/articles/\(id)?presentation=push")!
     }
 
-    static let settings = URL(string: "\(host)/settings")!
-    static let signIn = URL(string: "\(host)/sign-in")!
-    static let favorites = URL(string: "\(host)/favorites")!
+    static let settings = URL(string: "\(host)/settings?presentation=sheet")!
+    static let signIn = URL(string: "\(host)/sign-in?presentation=fullScreenCover")!
+    static let favorites = URL(string: "\(host)/favorites?presentation=tab")!
 }
 
 struct NavigationDemoView: View {

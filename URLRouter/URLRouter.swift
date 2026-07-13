@@ -9,6 +9,80 @@
 import Observation
 import SwiftUI
 
+/// A destination owned by a feature module rather than the app target.
+public struct ModuleRoute: Hashable, Sendable {
+    public let moduleID: String
+    public let routeID: String
+    public let parameters: [String: String]
+
+    public init(moduleID: String, routeID: String, parameters: [String: String] = [:]) {
+        self.moduleID = moduleID
+        self.routeID = routeID
+        self.parameters = parameters
+    }
+}
+
+/// The presentation contract encoded in an internal URL's `presentation` query item.
+public enum ModulePresentationStyle: String, Hashable, Sendable {
+    case push, tab, sheet, fullScreenCover
+}
+
+/// A module-owned destination together with the presentation requested by its URL.
+public struct ResolvedModuleRoute: Hashable, Sendable {
+    public let route: ModuleRoute
+    public let presentation: ModulePresentationStyle
+
+    public init(route: ModuleRoute, presentation: ModulePresentationStyle) {
+        self.route = route
+        self.presentation = presentation
+    }
+}
+
+/// A feature module's URL grammar and destination factory.
+@MainActor
+public struct RouteModule {
+    public let id: String
+    private let resolve: (UniversalLink) throws -> ModuleRoute?
+    private let destination: (ModuleRoute) -> AnyView?
+
+    public init(
+        id: String,
+        resolve: @escaping (UniversalLink) throws -> ModuleRoute?,
+        destination: @escaping (ModuleRoute) -> AnyView?
+    ) {
+        self.id = id
+        self.resolve = resolve
+        self.destination = destination
+    }
+
+    fileprivate func resolve(_ link: UniversalLink) throws -> ModuleRoute? { try resolve(link) }
+    fileprivate func destination(for route: ModuleRoute) -> AnyView? { destination(route) }
+}
+
+/// Registry assembled from feature packages. The app target does not parse feature URLs.
+@MainActor
+public final class ModuleRouteRegistry {
+    private let modules: [RouteModule]
+
+    public init(modules: [RouteModule]) { self.modules = modules }
+
+    public func resolve(_ link: UniversalLink) throws -> ResolvedModuleRoute {
+        guard let style = link.query["presentation"].flatMap(ModulePresentationStyle.init(rawValue:)) else {
+            throw UniversalLinkError.unsupportedRoute
+        }
+        for module in modules {
+            if let route = try module.resolve(link) {
+                return ResolvedModuleRoute(route: route, presentation: style)
+            }
+        }
+        throw UniversalLinkError.unsupportedRoute
+    }
+
+    public func destination(for route: ModuleRoute) -> AnyView {
+        modules.first(where: { $0.id == route.moduleID })?.destination(for: route) ?? AnyView(EmptyView())
+    }
+}
+
 /// The single source of truth for one app scene's navigation state.
 @available(iOS 17.0, macOS 14.0, *)
 @MainActor
@@ -137,6 +211,49 @@ public extension View {
                 onPresentation: onPresentation
             )
         )
+    }
+}
+
+@available(iOS 17.0, macOS 14.0, *)
+@MainActor
+public struct ModuleLinkRoutingModifier: ViewModifier {
+    private let router: AppRouter<ModuleRoute>
+    private let registry: ModuleRouteRegistry
+    private let allowedHosts: Set<String>
+
+    public init(router: AppRouter<ModuleRoute>, registry: ModuleRouteRegistry, allowedHosts: Set<String>) {
+        self.router = router
+        self.registry = registry
+        self.allowedHosts = allowedHosts
+    }
+
+    public func body(content: Content) -> some View {
+        content
+            .environment(\.openURL, OpenURLAction { route($0) })
+            .onOpenURL { _ = route($0) }
+    }
+
+    private func route(_ url: URL) -> OpenURLAction.Result {
+        guard let host = URLComponents(url: url, resolvingAgainstBaseURL: false)?.host?.lowercased(),
+              allowedHosts.contains(where: { $0.lowercased() == host }) else { return .systemAction }
+        do {
+            let presentation = try registry.resolve(UniversalLink(url: url, allowedHosts: allowedHosts))
+            switch presentation.presentation {
+            case .push: router.apply(.push(presentation.route))
+            case .tab: router.apply(.selectTab(presentation.route))
+            case .sheet: router.apply(.sheet(presentation.route))
+            case .fullScreenCover: router.apply(.fullScreenCover(presentation.route))
+            }
+            return .handled
+        } catch { return .discarded }
+    }
+}
+
+@available(iOS 17.0, macOS 14.0, *)
+public extension View {
+    @MainActor
+    func moduleLinkRouting(router: AppRouter<ModuleRoute>, registry: ModuleRouteRegistry, allowedHosts: Set<String>) -> some View {
+        modifier(ModuleLinkRoutingModifier(router: router, registry: registry, allowedHosts: allowedHosts))
     }
 }
 
