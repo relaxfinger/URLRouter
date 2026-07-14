@@ -189,6 +189,8 @@ Features/
 
 Both Packages depend on `URLRouter`, but they do not depend on each other. `NavigationFeature` opens article URLs owned by `ContentFeature`; `ContentFeature` opens settings URLs owned by `NavigationFeature`.
 
+This boundary is intentional: use URL contracts for cross-feature navigation rather than importing another Feature Package merely to access its views or route types.
+
 Open `URLRouter.xcodeproj`, choose the **URLRouterDemo** scheme, select an iOS 17+ simulator, and run it. Xcode resolves both local packages automatically. The demo shows all four URL presentation styles and cross-package navigation.
 
 Run tests with:

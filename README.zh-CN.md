@@ -189,6 +189,8 @@ Features/
 
 两个 Package 都依赖 `URLRouter`，但它们互不依赖。`NavigationFeature` 打开由 `ContentFeature` 负责的文章 URL；`ContentFeature` 打开由 `NavigationFeature` 负责的设置 URL。
 
+这是刻意设计的边界：跨 Feature 跳转应使用 URL 协议，不应为了访问对方 View 或路由类型而直接导入另一个 Feature Package。
+
 打开 `URLRouter.xcodeproj`，选择 **URLRouterDemo** scheme 与 iOS 17+ simulator 后运行，Xcode 会自动解析两个本地 Package。Demo 展示四种 URL 展示方式和跨 Package 跳转。
 
 运行测试：
