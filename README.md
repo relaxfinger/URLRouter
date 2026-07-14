@@ -22,20 +22,7 @@ Add `https://github.com/relaxfinger/URLRouter.git` in **File > Add Package Depen
 
 ## Architecture
 
-```text
-Feature View: openURL(URL)
-            │
-System Universal Link ──┤
-            ▼
-URLRouter.moduleLinkRouting
-            │ validates HTTPS, host, path, and presentation
-            ▼
-ModuleRouteRegistry → RouteModule in the owning Feature Package
-            ▼
-ModuleRouter → NavigationStack / TabView / sheet / fullScreenCover
-```
-
-There is one routing protocol: a complete HTTPS URL with a required `presentation` query item. Valid values are `push`, `tab`, `sheet`, and `fullScreenCover`.
+URLRouter lets Feature views navigate with one API: `openURL`. Register each Feature Package once in the App Shell, then use a complete HTTPS URL with a required `presentation` query item. Valid values are `push`, `tab`, `sheet`, and `fullScreenCover`.
 
 ```text
 https://example.com/articles/42?presentation=push
@@ -44,13 +31,12 @@ https://example.com/settings?presentation=sheet
 https://example.com/sign-in?presentation=fullScreenCover
 ```
 
-`ModuleRouter` owns navigation state internally. Feature and App code do not call an `apply` method or map URL paths to presentation styles.
 
 ## Universal Link setup
 
 1. Add the **Associated Domains** capability and `applinks:example.com`.
 2. Host `https://example.com/.well-known/apple-app-site-association` over HTTPS without redirects.
-3. Install `moduleLinkRouting` once at the `WindowGroup` root. Do not add `.onOpenURL` yourself.
+3. Install `moduleLinkRouting` once at the `WindowGroup` root.
 
 Example AASA configuration (replace the team and bundle IDs):
 
@@ -164,8 +150,6 @@ Task {
 ## Demo and testing
 
 Open `URLRouter.xcodeproj`, choose the **URLRouterDemo** scheme, select an iOS 17+ simulator, and run it. The demo shows all four URL presentation styles and direct URL simulation.
-
-`UniversalLink` rejects non-HTTPS URLs, unknown hosts, credentials, non-default ports, fragments, malformed path encoding, and ambiguous query values. Treat every URL parameter as untrusted input.
 
 Run tests with:
 

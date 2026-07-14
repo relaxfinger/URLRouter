@@ -22,20 +22,7 @@ URLRouter 是面向模块化 App 的 SwiftUI 路由基础库。Feature 页面统
 
 ## 架构
 
-```text
-Feature View: openURL(URL)
-            │
-系统 Universal Link ──┤
-            ▼
-URLRouter.moduleLinkRouting
-            │ 校验 HTTPS、host、path 与 presentation
-            ▼
-ModuleRouteRegistry → 对应 Feature Package 的 RouteModule
-            ▼
-ModuleRouter → NavigationStack / TabView / sheet / fullScreenCover
-```
-
-项目只有一种路由协议：完整 HTTPS URL，且必须携带 `presentation` query。合法值为 `push`、`tab`、`sheet`、`fullScreenCover`。
+URLRouter 让 Feature 页面统一通过 `openURL` 跳转。App Shell 一次性注册各 Feature Package 后，使用完整 HTTPS URL 并携带必填 `presentation` query 即可。合法值为 `push`、`tab`、`sheet`、`fullScreenCover`。
 
 ```text
 https://example.com/articles/42?presentation=push
@@ -44,13 +31,12 @@ https://example.com/settings?presentation=sheet
 https://example.com/sign-in?presentation=fullScreenCover
 ```
 
-`ModuleRouter` 在内部维护导航状态。Feature 与 App 代码都不调用 `apply`，也不负责将 URL 路径映射为展示方式。
 
 ## 配置 Universal Link
 
 1. 在 target 添加 **Associated Domains** capability，并添加 `applinks:example.com`。
 2. 通过 HTTPS 且不重定向地部署 `https://example.com/.well-known/apple-app-site-association`。
-3. 只在 `WindowGroup` 根部安装一次 `moduleLinkRouting`，不要自己添加 `.onOpenURL`。
+3. 只在 `WindowGroup` 根部安装一次 `moduleLinkRouting`。
 
 AASA 示例（替换团队 ID 与 bundle ID）：
 
@@ -164,8 +150,6 @@ Task {
 ## Demo 与测试
 
 打开 `URLRouter.xcodeproj`，选择 **URLRouterDemo** scheme 与 iOS 17+ simulator 后运行。Demo 展示四种 URL 展示方式，以及直接输入 URL 的模拟功能。
-
-`UniversalLink` 会拒绝非 HTTPS、未知 host、凭据、非默认端口、fragment、非法路径编码和歧义 query。所有 URL 参数都应视为不可信外部输入。
 
 运行测试：
 
