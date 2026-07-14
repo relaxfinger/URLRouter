@@ -10,9 +10,9 @@ import SwiftUI
 import URLRouter
 
 struct DemoTabs: View {
-    @Bindable private var router: AppRouter<ModuleRoute>
+    @Bindable private var router: ModuleRouter
 
-    init(router: AppRouter<ModuleRoute>) {
+    init(router: ModuleRouter) {
         self.router = router
     }
 
@@ -31,7 +31,7 @@ struct DemoTabs: View {
 
 struct DemoDestination: View {
     let route: ModuleRoute
-    let router: AppRouter<ModuleRoute>
+    let router: ModuleRouter
 
     @ViewBuilder
     var body: some View {

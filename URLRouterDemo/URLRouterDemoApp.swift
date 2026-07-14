@@ -11,7 +11,7 @@ import URLRouter
 
 @main
 struct URLRouterDemoApp: App {
-    @State private var router = AppRouter<ModuleRoute>()
+    @State private var router = ModuleRouter()
 
     var body: some Scene {
         WindowGroup {
