@@ -117,7 +117,10 @@ The app links Feature Packages and registers them once. It never parses feature 
 @main
 struct MyApp: App {
     @State private var router = ModuleRouter()
-    private let registry = ModuleRouteRegistry(modules: [ArticleFeature.module])
+    private let registry = ModuleRouteRegistry(modules: [
+        ArticleFeature.module,
+        SettingsFeature.module
+    ])
 
     var body: some Scene {
         WindowGroup {
@@ -136,7 +139,7 @@ struct MyApp: App {
 }
 ```
 
-Swift cannot discover unlinked packages at runtime. Adding a new feature requires linking its package and adding its `RouteModule` to the registry, but never editing a central URL `switch`.
+Swift cannot discover unlinked packages at runtime. With two or more Feature Packages, the App Shell adds each package's single `RouteModule` to this one registry. Adding a feature requires linking its package and adding that module, but never editing a central URL `switch`, path parser, or presentation mapping.
 
 ## Routing scenarios
 

@@ -20,11 +20,11 @@ struct DemoTabs: View {
         TabView(selection: $router.selectedTab) {
             NavigationDemoView()
                 .tabItem { Label("Home", systemImage: "house") }
-                .tag(Optional(DemoFeatureModule.home))
+                .tag(Optional(DemoNavigationFeature.home))
 
             FavoritesView()
                 .tabItem { Label("Favorites", systemImage: "heart") }
-                .tag(Optional(DemoFeatureModule.favorites))
+                .tag(Optional(DemoNavigationFeature.favorites))
         }
     }
 }
@@ -35,7 +35,7 @@ struct DemoDestination: View {
 
     @ViewBuilder
     var body: some View {
-        DemoFeatureModule.registry.destination(for: route)
+        DemoModules.registry.destination(for: route)
     }
 }
 
