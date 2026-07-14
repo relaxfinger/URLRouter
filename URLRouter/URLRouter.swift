@@ -97,7 +97,7 @@ public final class ModuleRouter {
 
     public init() {}
 
-    fileprivate func apply(_ presentation: ResolvedModuleRoute) {
+    func apply(_ presentation: ResolvedModuleRoute) {
         switch presentation.presentation {
         case .push: path.append(presentation.route)
         case .tab:
@@ -108,8 +108,8 @@ public final class ModuleRouter {
         }
     }
 
-    fileprivate func dismissSheet() { sheet = nil }
-    fileprivate func dismissFullScreenCover() { fullScreenCover = nil }
+    func dismissSheet() { sheet = nil }
+    func dismissFullScreenCover() { fullScreenCover = nil }
 }
 
 @available(iOS 17.0, macOS 14.0, *)

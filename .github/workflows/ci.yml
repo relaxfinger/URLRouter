@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [master, develop]
+  pull_request:
+    branches: [master, develop]
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test URLRouter
+        run: swift test
+      - name: Build NavigationFeature
+        run: swift build --package-path Features/NavigationFeature
+      - name: Build ContentFeature
+        run: swift build --package-path Features/ContentFeature
+      - name: Build demo
+        run: >-
+          xcodebuild build
+          -project URLRouter.xcodeproj
+          -scheme URLRouterDemo
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO

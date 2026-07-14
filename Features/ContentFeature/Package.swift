@@ -4,7 +4,7 @@ import PackageDescription
 
 let package = Package(
     name: "ContentFeature",
-    platforms: [.iOS(.v17)],
+    platforms: [.iOS(.v17), .macOS(.v14)],
     products: [.library(name: "ContentFeature", targets: ["ContentFeature"])],
     dependencies: [.package(path: "../..")],
     targets: [
