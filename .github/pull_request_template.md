@@ -11,6 +11,6 @@
 
 ## Checklist
 
-- [ ] Targets `develop`
+- [ ] Targets `master`
 - [ ] Does not introduce direct Feature-to-Feature imports for navigation
 - [ ] Updates English and Chinese README files when public integration changes

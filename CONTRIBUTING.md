@@ -33,10 +33,14 @@ xcodebuild build \
 
 ## Pull requests
 
-- Branch from `develop` and target `develop` unless the maintainer asks otherwise.
+- Branch from the latest `master` and target `master`.
 - Keep each pull request focused on one concern.
 - Add or update tests for observable behavior changes.
 - Update both README languages when a public API or integration workflow changes.
 - Use concise, imperative commit messages, for example: `Add route registry collision test`.
+- Wait for the required CI checks and maintainer approval before merging.
+- Maintainers use squash merge so each pull request becomes one focused commit on `master`.
+
+Direct pushes to `master` are not part of the normal contribution workflow. Releases are created from `master` and identified with semantic version tags such as `v2.0.0`.
 
 By contributing, you agree that your contribution is licensed under this repository's [MIT License](LICENSE).
