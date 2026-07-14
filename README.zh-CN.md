@@ -147,6 +147,30 @@ Task {
 }
 ```
 
+### 从一个 Feature Package 跳转到另一个
+
+Feature A 不导入 Feature B，也不引用 B 的 View；它只发送 B 已公开的 URL 协议：
+
+```swift
+// 位于 NavigationFeature
+@Environment(\.openURL) private var openURL
+
+Button("打开内容文章") {
+    openURL(URL(string: "https://example.com/articles/42?presentation=push")!)
+}
+```
+
+`ContentFeature` 负责 `/articles/*` 并提供 `ArticleView`。它也可以用相同方式跳回 `NavigationFeature`：
+
+```swift
+// 位于 ContentFeature
+Button("打开设置") {
+    openURL(URL(string: "https://example.com/settings?presentation=sheet")!)
+}
+```
+
+两个模块都必须被链接并加入 `ModuleRouteRegistry`。Demo 注册了 `DemoNavigationFeature` 和 `DemoContentFeature`，并演示双向跳转。
+
 ## Demo 与测试
 
 打开 `URLRouter.xcodeproj`，选择 **URLRouterDemo** scheme 与 iOS 17+ simulator 后运行。Demo 展示四种 URL 展示方式，以及直接输入 URL 的模拟功能。

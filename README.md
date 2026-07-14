@@ -147,6 +147,30 @@ Task {
 }
 ```
 
+### Navigate from one Feature Package to another
+
+Feature A does not import Feature B or reference its views. It emits Feature B's documented URL contract:
+
+```swift
+// Inside NavigationFeature
+@Environment(\.openURL) private var openURL
+
+Button("Open content article") {
+    openURL(URL(string: "https://example.com/articles/42?presentation=push")!)
+}
+```
+
+`ContentFeature` owns `/articles/*` and supplies `ArticleView`. It can route back to `NavigationFeature` the same way:
+
+```swift
+// Inside ContentFeature
+Button("Open settings") {
+    openURL(URL(string: "https://example.com/settings?presentation=sheet")!)
+}
+```
+
+Both modules must be linked and included in `ModuleRouteRegistry`. The demo registers `DemoNavigationFeature` and `DemoContentFeature`, and demonstrates both directions.
+
 ## Demo and testing
 
 Open `URLRouter.xcodeproj`, choose the **URLRouterDemo** scheme, select an iOS 17+ simulator, and run it. The demo shows all four URL presentation styles and direct URL simulation.

@@ -8,6 +8,7 @@
 
 import SwiftUI
 import URLRouter
+import NavigationFeature
 
 struct DemoTabs: View {
     @Bindable private var router: ModuleRouter
@@ -18,48 +19,13 @@ struct DemoTabs: View {
 
     var body: some View {
         TabView(selection: $router.selectedTab) {
-            NavigationDemoView()
+            HomeView()
                 .tabItem { Label("Home", systemImage: "house") }
-                .tag(Optional(DemoNavigationFeature.home))
+                .tag(Optional(NavigationFeatureRoutes.home))
 
-            FavoritesView()
+            NavigationFeature.FavoritesView()
                 .tabItem { Label("Favorites", systemImage: "heart") }
-                .tag(Optional(DemoNavigationFeature.favorites))
+                .tag(Optional(NavigationFeatureRoutes.favorites))
         }
-    }
-}
-
-struct DemoDestination: View {
-    let route: ModuleRoute
-    let router: ModuleRouter
-
-    @ViewBuilder
-    var body: some View {
-        DemoModules.registry.destination(for: route)
-    }
-}
-
-struct SignInView: View {
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "lock.fill")
-                .font(.system(size: 54))
-            Text("Sign in")
-                .font(.largeTitle.bold())
-            Text("This page is presented with fullScreenCover.")
-                .foregroundStyle(.secondary)
-
-            Button("Simulate successful sign in") {
-                dismiss()
-            }
-            .buttonStyle(.borderedProminent)
-
-            Button("Cancel") {
-                dismiss()
-            }
-        }
-        .padding()
     }
 }
