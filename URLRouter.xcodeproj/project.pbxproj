@@ -14,8 +14,12 @@
 		6ED81CAF244C48B200C385B2 /* URLRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6ED81CAE244C48B200C385B2 /* URLRouter.swift */; };
 		D3A000000000000000000001 /* URLRouterDemoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A000000000000000000011 /* URLRouterDemoApp.swift */; };
 		D3A000000000000000000002 /* DemoViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A000000000000000000012 /* DemoViews.swift */; };
+		D3A000000000000000000005 /* DemoFeatureViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A000000000000000000015 /* DemoFeatureViews.swift */; };
 		D3A000000000000000000003 /* URLRouter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6ED81C92244C409800C385B2 /* URLRouter.framework */; };
 		D3A000000000000000000004 /* URLRouter.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 6ED81C92244C409800C385B2 /* URLRouter.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		D3A000000000000000000006 /* ContentFeature in Frameworks */ = {isa = PBXBuildFile; productRef = D3A000000000000000000016 /* ContentFeature */; };
+		D3A000000000000000000007 /* NavigationFeature in Frameworks */ = {isa = PBXBuildFile; productRef = D3A000000000000000000017 /* NavigationFeature */; };
+		D3A000000000000000000008 /* URLRouter in Frameworks */ = {isa = PBXBuildFile; productRef = D3A000000000000000000020 /* URLRouter */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -64,6 +68,7 @@
 		D3A000000000000000000012 /* DemoViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoViews.swift; sourceTree = "<group>"; };
 		D3A000000000000000000013 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D3A000000000000000000014 /* URLRouterDemo.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = URLRouterDemo.entitlements; sourceTree = "<group>"; };
+		D3A000000000000000000015 /* DemoFeatureViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoFeatureViews.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -86,7 +91,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D3A000000000000000000003 /* URLRouter.framework in Frameworks */,
+				D3A000000000000000000008 /* URLRouter in Frameworks */,
+				D3A000000000000000000006 /* ContentFeature in Frameworks */,
+				D3A000000000000000000007 /* NavigationFeature in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -139,6 +146,7 @@
 			children = (
 				D3A000000000000000000011 /* URLRouterDemoApp.swift */,
 				D3A000000000000000000012 /* DemoViews.swift */,
+				D3A000000000000000000015 /* DemoFeatureViews.swift */,
 				D3A000000000000000000013 /* Info.plist */,
 				D3A000000000000000000014 /* URLRouterDemo.entitlements */,
 			);
@@ -202,12 +210,15 @@
 				D3A000000000000000000032 /* Sources */,
 				D3A000000000000000000030 /* Frameworks */,
 				D3A000000000000000000033 /* Resources */,
-				D3A000000000000000000031 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				D3A000000000000000000022 /* PBXTargetDependency */,
+			);
+			packageProductDependencies = (
+				D3A000000000000000000020 /* URLRouter */,
+				D3A000000000000000000016 /* ContentFeature */,
+				D3A000000000000000000017 /* NavigationFeature */,
 			);
 			name = URLRouterDemo;
 			productName = URLRouterDemo;
@@ -246,6 +257,11 @@
 			);
 			mainGroup = 6ED81C88244C409800C385B2;
 			productRefGroup = 6ED81C93244C409800C385B2 /* Products */;
+			packageReferences = (
+				D3A000000000000000000018 /* XCLocalSwiftPackageReference "Features/ContentFeature" */,
+				D3A000000000000000000019 /* XCLocalSwiftPackageReference "Features/NavigationFeature" */,
+				D3A000000000000000000021 /* XCLocalSwiftPackageReference "." */,
+			);
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -304,6 +320,7 @@
 			files = (
 				D3A000000000000000000001 /* URLRouterDemoApp.swift in Sources */,
 				D3A000000000000000000002 /* DemoViews.swift in Sources */,
+				D3A000000000000000000005 /* DemoFeatureViews.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -584,6 +601,39 @@
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		D3A000000000000000000018 /* XCLocalSwiftPackageReference "Features/ContentFeature" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Features/ContentFeature;
+		};
+		D3A000000000000000000019 /* XCLocalSwiftPackageReference "Features/NavigationFeature" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Features/NavigationFeature;
+		};
+		D3A000000000000000000021 /* XCLocalSwiftPackageReference "." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = .;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		D3A000000000000000000016 /* ContentFeature */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D3A000000000000000000018 /* XCLocalSwiftPackageReference "Features/ContentFeature" */;
+			productName = ContentFeature;
+		};
+		D3A000000000000000000017 /* NavigationFeature */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D3A000000000000000000019 /* XCLocalSwiftPackageReference "Features/NavigationFeature" */;
+			productName = NavigationFeature;
+		};
+		D3A000000000000000000020 /* URLRouter */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D3A000000000000000000021 /* XCLocalSwiftPackageReference "." */;
+			productName = URLRouter;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCConfigurationList section */
 		6ED81C8C244C409800C385B2 /* Build configuration list for PBXProject "URLRouter" */ = {

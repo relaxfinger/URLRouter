@@ -79,17 +79,3 @@ public enum UniversalLinkError: Error, Equatable, Sendable, LocalizedError {
         }
     }
 }
-
-/// A route is data; it never creates a view controller or reaches into a window hierarchy.
-public enum RoutePresentation<Route: Hashable & Sendable>: Sendable {
-    case push(Route)
-    case replaceStack([Route])
-    case selectTab(Route, resetNavigation: Bool = true)
-    case sheet(Route)
-    case fullScreenCover(Route)
-}
-
-/// Opt in a route enum to Universal Link handling.
-public protocol UniversalLinkRoute: Hashable, Sendable {
-    static func presentation(for link: UniversalLink) throws -> RoutePresentation<Self>
-}
