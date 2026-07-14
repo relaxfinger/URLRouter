@@ -11,10 +11,12 @@ import SwiftUI
 
 /// A destination owned by a feature module rather than the app target.
 public struct ModuleRoute: Hashable, Sendable {
+    /// The Feature Package that owns this route.
     public let moduleID: String
     public let routeID: String
     public let parameters: [String: String]
 
+    /// Creates a route value returned by a Feature Package's URL matcher.
     public init(moduleID: String, routeID: String, parameters: [String: String] = [:]) {
         self.moduleID = moduleID
         self.routeID = routeID
@@ -32,6 +34,7 @@ public struct ResolvedModuleRoute: Hashable, Sendable {
     public let route: ModuleRoute
     public let presentation: ModulePresentationStyle
 
+    /// Creates a route together with the presentation requested by its URL.
     public init(route: ModuleRoute, presentation: ModulePresentationStyle) {
         self.route = route
         self.presentation = presentation
@@ -45,6 +48,7 @@ public struct RouteModule {
     private let resolve: (UniversalLink) throws -> ModuleRoute?
     private let destination: (ModuleRoute) -> AnyView?
 
+    /// Creates a module registration. Return `nil` when the URL belongs to another module.
     public init(
         id: String,
         resolve: @escaping (UniversalLink) throws -> ModuleRoute?,
@@ -64,8 +68,10 @@ public struct RouteModule {
 public final class ModuleRouteRegistry {
     private let modules: [RouteModule]
 
+    /// Creates a registry from every Feature Package linked into the app.
     public init(modules: [RouteModule]) { self.modules = modules }
 
+    /// Resolves a validated URL to its owning module and presentation contract.
     public func resolve(_ link: UniversalLink) throws -> ResolvedModuleRoute {
         guard let style = link.query["presentation"].flatMap(ModulePresentationStyle.init(rawValue:)) else {
             throw UniversalLinkError.unsupportedRoute
@@ -78,6 +84,7 @@ public final class ModuleRouteRegistry {
         throw UniversalLinkError.unsupportedRoute
     }
 
+    /// Returns the destination view supplied by the route's owning module.
     public func destination(for route: ModuleRoute) -> AnyView {
         modules.first(where: { $0.id == route.moduleID })?.destination(for: route) ?? AnyView(EmptyView())
     }
@@ -95,6 +102,7 @@ public final class ModuleRouter {
     public private(set) var sheet: ModuleRoute?
     public private(set) var fullScreenCover: ModuleRoute?
 
+    /// Creates independent navigation state for one SwiftUI scene.
     public init() {}
 
     func apply(_ presentation: ResolvedModuleRoute) {
@@ -119,6 +127,7 @@ public struct ModuleLinkRoutingModifier: ViewModifier {
     private let registry: ModuleRouteRegistry
     private let allowedHosts: Set<String>
 
+    /// Creates the root URL handler for trusted Universal Links and in-app `openURL` actions.
     public init(router: ModuleRouter, registry: ModuleRouteRegistry, allowedHosts: Set<String>) {
         self.router = router
         self.registry = registry
@@ -145,6 +154,7 @@ public struct ModuleLinkRoutingModifier: ViewModifier {
 @available(iOS 17.0, macOS 14.0, *)
 public extension View {
     @MainActor
+    /// Installs URLRouter once at the root of a scene.
     func moduleLinkRouting(router: ModuleRouter, registry: ModuleRouteRegistry, allowedHosts: Set<String>) -> some View {
         modifier(ModuleLinkRoutingModifier(router: router, registry: registry, allowedHosts: allowedHosts))
     }
@@ -159,6 +169,7 @@ public struct RouterHost<Root: View, Destination: View>: View {
     private let root: () -> Root
     private let destination: (ModuleRoute) -> Destination
 
+    /// Creates the SwiftUI host that renders module destinations.
     public init(
         router: ModuleRouter,
         @ViewBuilder root: @escaping () -> Root,
