@@ -173,7 +173,17 @@ Button("打开设置") {
 
 ## Demo 与测试
 
-打开 `URLRouter.xcodeproj`，选择 **URLRouterDemo** scheme 与 iOS 17+ simulator 后运行。Demo 展示四种 URL 展示方式，以及直接输入 URL 的模拟功能。
+Demo 使用两个真实的本地 Swift Package：
+
+```text
+Features/
+├── NavigationFeature/  # 首页、收藏、设置、登录
+└── ContentFeature/     # 文章详情
+```
+
+两个 Package 都依赖 `URLRouter`，但它们互不依赖。`NavigationFeature` 打开由 `ContentFeature` 负责的文章 URL；`ContentFeature` 打开由 `NavigationFeature` 负责的设置 URL。
+
+打开 `URLRouter.xcodeproj`，选择 **URLRouterDemo** scheme 与 iOS 17+ simulator 后运行，Xcode 会自动解析两个本地 Package。Demo 展示四种 URL 展示方式和跨 Package 跳转。
 
 运行测试：
 
