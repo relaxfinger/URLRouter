@@ -20,6 +20,12 @@ URLRouter 是面向模块化 App 的 SwiftUI 路由基础库。Feature 页面统
 
 在 Xcode 的 **File > Add Package Dependencies…** 添加 `https://github.com/relaxfinger/URLRouter.git`，随后导入 `URLRouter`。最低支持 iOS 17。
 
+### 兼容性
+
+- iOS 17+ 与 macOS 14+
+- Swift 6 语言模式
+- Xcode 16 或更高版本
+
 ## 架构
 
 URLRouter 让 Feature 页面统一通过 `openURL` 跳转。App Shell 一次性注册各 Feature Package 后，使用完整 HTTPS URL 并携带必填 `presentation` query 即可。合法值为 `push`、`tab`、`sheet`、`fullScreenCover`。

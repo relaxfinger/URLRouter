@@ -20,6 +20,12 @@ URLRouter is a SwiftUI routing foundation for modular apps. Feature code always 
 
 Add `https://github.com/relaxfinger/URLRouter.git` in **File > Add Package Dependencies…**, then import `URLRouter`. The minimum deployment target is iOS 17.
 
+### Compatibility
+
+- iOS 17+ and macOS 14+
+- Swift 6 language mode
+- Xcode 16 or later
+
 ## Architecture
 
 URLRouter lets Feature views navigate with one API: `openURL`. Register each Feature Package once in the App Shell, then use a complete HTTPS URL with a required `presentation` query item. Valid values are `push`, `tab`, `sheet`, and `fullScreenCover`.
