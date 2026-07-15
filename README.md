@@ -71,17 +71,36 @@ enum ArticleFeature {
     static let module = RouteModule(
         id: id,
         resolve: { link in
-            guard link.pathComponents.count == 2,
-                  link.pathComponents[0] == "articles" else { return nil }
-            return ModuleRoute(
-                moduleID: id,
-                routeID: "detail",
-                parameters: ["id": link.pathComponents[1]]
-            )
+            switch link.pathComponents {
+            case ["articles", let articleID]:
+                return ModuleRoute(
+                    moduleID: id,
+                    routeID: "detail",
+                    parameters: ["id": articleID]
+                )
+            case ["articles", let articleID, "comments"]:
+                return ModuleRoute(
+                    moduleID: id,
+                    routeID: "comments",
+                    parameters: ["id": articleID]
+                )
+            case ["articles", "search"]:
+                return ModuleRoute(moduleID: id, routeID: "search")
+            default:
+                return nil
+            }
         },
         destination: { route in
-            guard route.routeID == "detail" else { return nil }
-            return AnyView(ArticleView(id: route.parameters["id"] ?? ""))
+            switch route.routeID {
+            case "detail":
+                return AnyView(ArticleView(id: route.parameters["id"] ?? ""))
+            case "comments":
+                return AnyView(CommentsView(articleID: route.parameters["id"] ?? ""))
+            case "search":
+                return AnyView(ArticleSearchView())
+            default:
+                return nil
+            }
         }
     )
 }
@@ -100,6 +119,16 @@ struct ArticleList: View {
     }
 }
 ```
+
+One `RouteModule` can therefore own multiple links. In this example, the Feature owns the following public URL contracts:
+
+```text
+https://example.com/articles/42?presentation=push
+https://example.com/articles/42/comments?presentation=sheet
+https://example.com/articles/search?presentation=tab
+```
+
+The path selects the `routeID` and parameters; `presentation` selects how SwiftUI displays the resolved destination.
 
 ## App Shell
 

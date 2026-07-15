@@ -71,17 +71,36 @@ enum ArticleFeature {
     static let module = RouteModule(
         id: id,
         resolve: { link in
-            guard link.pathComponents.count == 2,
-                  link.pathComponents[0] == "articles" else { return nil }
-            return ModuleRoute(
-                moduleID: id,
-                routeID: "detail",
-                parameters: ["id": link.pathComponents[1]]
-            )
+            switch link.pathComponents {
+            case ["articles", let articleID]:
+                return ModuleRoute(
+                    moduleID: id,
+                    routeID: "detail",
+                    parameters: ["id": articleID]
+                )
+            case ["articles", let articleID, "comments"]:
+                return ModuleRoute(
+                    moduleID: id,
+                    routeID: "comments",
+                    parameters: ["id": articleID]
+                )
+            case ["articles", "search"]:
+                return ModuleRoute(moduleID: id, routeID: "search")
+            default:
+                return nil
+            }
         },
         destination: { route in
-            guard route.routeID == "detail" else { return nil }
-            return AnyView(ArticleView(id: route.parameters["id"] ?? ""))
+            switch route.routeID {
+            case "detail":
+                return AnyView(ArticleView(id: route.parameters["id"] ?? ""))
+            case "comments":
+                return AnyView(CommentsView(articleID: route.parameters["id"] ?? ""))
+            case "search":
+                return AnyView(ArticleSearchView())
+            default:
+                return nil
+            }
         }
     )
 }
@@ -100,6 +119,16 @@ struct ArticleList: View {
     }
 }
 ```
+
+因此，一个 `RouteModule` 可以负责多个 link。以上 Feature 对外声明了以下 URL 协议：
+
+```text
+https://example.com/articles/42?presentation=push
+https://example.com/articles/42/comments?presentation=sheet
+https://example.com/articles/search?presentation=tab
+```
+
+路径决定 `routeID` 和参数；`presentation` 决定 SwiftUI 如何展示已解析的页面。
 
 ## App Shell
 
