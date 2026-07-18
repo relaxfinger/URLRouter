@@ -26,6 +26,19 @@ Add `https://github.com/relaxfinger/URLRouter.git` in **File > Add Package Depen
 - Swift 6 language mode
 - Xcode 16 or later
 
+### Package layout
+
+The repository follows the standard Swift Package Manager layout. The library
+and its tests can be built directly with SwiftPM; the Xcode project remains
+only as an executable demo host.
+
+```text
+Sources/URLRouter/        # public library source
+Tests/URLRouterTests/     # unit tests
+Features/                 # local feature-package examples
+URLRouterDemo/            # SwiftUI demo app
+```
+
 ## Architecture
 
 URLRouter lets Feature views navigate with one API: `openURL`. Register each Feature Package once in the App Shell, then use a complete HTTPS URL with a required `presentation` query item. Valid values are `push`, `tab`, `sheet`, and `fullScreenCover`.

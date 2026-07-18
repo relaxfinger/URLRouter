@@ -4,27 +4,24 @@ import PackageDescription
 
 let package = Package(
     name: "URLRouter",
+    defaultLocalization: "en",
     platforms: [.iOS(.v17), .macOS(.v14)],
     products: [
         .library(
             name: "URLRouter",
             targets: ["URLRouter"]
-        ),
-            
+        )
     ],
     dependencies: [],
     targets: [
         .target(
             name: "URLRouter",
-            dependencies: [],
-            path: "URLRouter",
-            exclude: ["Info.plist"]
+            dependencies: []
         ),
         .testTarget(
             name: "URLRouterTests",
-            dependencies: ["URLRouter"],
-            path: "URLRouterTests",
-            exclude: ["Info.plist"]
-        ),
-    ]
+            dependencies: ["URLRouter"]
+        )
+    ],
+    swiftLanguageModes: [.v6]
 )

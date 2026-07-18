@@ -10,7 +10,7 @@
 		6ED81C9C244C409800C385B2 /* URLRouter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6ED81C92244C409800C385B2 /* URLRouter.framework */; };
 		6ED81CA1244C409800C385B2 /* URLRouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6ED81CA0244C409800C385B2 /* URLRouterTests.swift */; };
 		6ED81CA3244C409800C385B2 /* URLRouter.h in Headers */ = {isa = PBXBuildFile; fileRef = 6ED81C95244C409800C385B2 /* URLRouter.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		6ED81CAD244C482900C385B2 /* Router.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6ED81CAC244C482900C385B2 /* Router.swift */; };
+		6ED81CAD244C482900C385B2 /* UniversalLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6ED81CAC244C482900C385B2 /* UniversalLink.swift */; };
 		6ED81CAF244C48B200C385B2 /* URLRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6ED81CAE244C48B200C385B2 /* URLRouter.swift */; };
 		D3A000000000000000000001 /* URLRouterDemoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A000000000000000000011 /* URLRouterDemoApp.swift */; };
 		D3A000000000000000000002 /* DemoViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A000000000000000000012 /* DemoViews.swift */; };
@@ -36,10 +36,10 @@
 		6ED81C95244C409800C385B2 /* URLRouter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = URLRouter.h; sourceTree = "<group>"; };
 		6ED81C96244C409800C385B2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		6ED81C9B244C409800C385B2 /* URLRouterTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = URLRouterTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		6ED81CA0244C409800C385B2 /* URLRouterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLRouterTests.swift; sourceTree = "<group>"; };
+		6ED81CA0244C409800C385B2 /* URLRouterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests/URLRouterTests/URLRouterTests.swift; sourceTree = SOURCE_ROOT; };
 		6ED81CA2244C409800C385B2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		6ED81CAC244C482900C385B2 /* Router.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Router.swift; sourceTree = "<group>"; };
-		6ED81CAE244C48B200C385B2 /* URLRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLRouter.swift; sourceTree = "<group>"; };
+		6ED81CAC244C482900C385B2 /* UniversalLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/URLRouter/UniversalLink.swift; sourceTree = SOURCE_ROOT; };
+		6ED81CAE244C48B200C385B2 /* URLRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/URLRouter/URLRouter.swift; sourceTree = SOURCE_ROOT; };
 		D3A000000000000000000010 /* URLRouterDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = URLRouterDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D3A000000000000000000011 /* URLRouterDemoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLRouterDemoApp.swift; sourceTree = "<group>"; };
 		D3A000000000000000000012 /* DemoViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoViews.swift; sourceTree = "<group>"; };
@@ -102,7 +102,7 @@
 			children = (
 				6ED81C95244C409800C385B2 /* URLRouter.h */,
 				6ED81C96244C409800C385B2 /* Info.plist */,
-				6ED81CAC244C482900C385B2 /* Router.swift */,
+				6ED81CAC244C482900C385B2 /* UniversalLink.swift */,
 				6ED81CAE244C48B200C385B2 /* URLRouter.swift */,
 				6E35553D244E9EE100A3F4A7 /* URLRouter.modulemap */,
 			);
@@ -280,7 +280,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				6ED81CAF244C48B200C385B2 /* URLRouter.swift in Sources */,
-				6ED81CAD244C482900C385B2 /* Router.swift in Sources */,
+				6ED81CAD244C482900C385B2 /* UniversalLink.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
