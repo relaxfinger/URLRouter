@@ -4,6 +4,13 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [2.4.3] - 2026-07-18
+
+### Added
+
+- PR CI now compares the public Swift APIs of both library products against the exact base commit and rejects breaking changes.
+- Added English and Chinese documentation for the public API compatibility policy and its relationship to semantic versioning.
+
 ## [2.4.2] - 2026-07-18
 
 ### Changed
