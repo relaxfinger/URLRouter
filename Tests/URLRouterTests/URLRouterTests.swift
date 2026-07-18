@@ -157,6 +157,68 @@ final class URLRouterTests: XCTestCase {
     }
 
     @MainActor
+    func testRemotePolicyStoreSupportsCircuitBreakingAndModuleFlags() throws {
+        let route = ModuleRoute(moduleID: "content", routeID: "article")
+        let presentation = ResolvedModuleRoute(route: route, presentation: .push)
+        let versionedLink = try link("https://example.com/articles/42?presentation=push&version=1")
+        let store = ModuleRoutePolicyStore(
+            localPolicy: ModuleRoutePolicy(
+                acceptedContractVersions: ["1"],
+                allowsUnversionedLinks: false
+            ),
+            remotePolicy: ModuleRouteRemotePolicy(disabledModuleIDs: ["content"])
+        )
+
+        XCTAssertThrowsError(try store.validate(versionedLink, presentation: presentation)) { error in
+            XCTAssertEqual(error as? ModuleRoutePolicyError, .moduleDisabled("content"))
+        }
+
+        store.replaceRemotePolicy(with: ModuleRouteRemotePolicy(isCircuitBreakerOpen: true))
+        XCTAssertThrowsError(try store.validate(versionedLink, presentation: presentation)) { error in
+            XCTAssertEqual(error as? ModuleRoutePolicyError, .routingSuspended)
+        }
+
+        store.replaceRemotePolicy(with: ModuleRouteRemotePolicy(allowedPresentationStyles: [.sheet]))
+        XCTAssertThrowsError(try store.validate(versionedLink, presentation: presentation)) { error in
+            XCTAssertEqual(error as? ModuleRoutePolicyError, .presentationNotAllowed(.push))
+        }
+
+        let remotePolicy = ModuleRouteRemotePolicy(
+            isCircuitBreakerOpen: true,
+            acceptedContractVersions: ["1"],
+            allowsUnversionedLinks: false,
+            disabledModuleIDs: ["navigation"],
+            enabledModuleIDs: ["content"],
+            allowedPresentationStyles: [.push]
+        )
+        let decoded = try JSONDecoder().decode(
+            ModuleRouteRemotePolicy.self,
+            from: JSONEncoder().encode(remotePolicy)
+        )
+        XCTAssertEqual(decoded, remotePolicy)
+    }
+
+    @MainActor
+    func testObservabilityFansOutPrivacySafeEvents() {
+        let observer = RouteObserver()
+        let observability = ModuleRouteObservability(observers: [observer])
+        let event = ModuleRouteEvent(
+            traceID: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+            timestamp: Date(timeIntervalSince1970: 0),
+            outcome: .discarded,
+            host: "example.com",
+            moduleID: "content",
+            routeID: "article",
+            presentation: .push,
+            failureCode: "policy.routing_suspended"
+        )
+
+        observability.record(event)
+        XCTAssertEqual(observer.events, [event])
+        XCTAssertNil(event.failureDescription)
+    }
+
+    @MainActor
     func testModuleRouterAppliesEveryPresentationStyle() {
         let router = ModuleRouter()
         let route = ModuleRoute(moduleID: "content", routeID: "article")
@@ -199,5 +261,14 @@ final class URLRouterTests: XCTestCase {
 
     private func link(_ string: String) throws -> UniversalLink {
         try UniversalLink(url: try XCTUnwrap(URL(string: string)), allowedHosts: ["example.com"])
+    }
+
+    @MainActor
+    private final class RouteObserver: ModuleRouteObserving {
+        var events: [ModuleRouteEvent] = []
+
+        func record(_ event: ModuleRouteEvent) {
+            events.append(event)
+        }
     }
 }

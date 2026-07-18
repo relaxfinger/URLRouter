@@ -11,6 +11,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
+      - name: Validate route contracts
+        run: swift Scripts/validate_route_contract.swift RouteContracts.json
       - name: Test URLRouter
         run: swift test
       - name: Build URLRouter for tvOS

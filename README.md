@@ -13,8 +13,9 @@ URLRouter is a SwiftUI routing foundation for modular apps. Feature code always 
 3. [Universal Link setup](#universal-link-setup)
 4. [Feature Package](#feature-package)
 5. [App Shell](#app-shell)
-6. [Routing scenarios](#routing-scenarios)
-7. [Demo and testing](#demo-and-testing)
+6. [Production governance](#production-governance)
+7. [Routing scenarios](#routing-scenarios)
+8. [Demo and testing](#demo-and-testing)
 
 ## Install
 
@@ -41,7 +42,7 @@ URLRouterDemo/            # SwiftUI demo app
 
 ## Architecture
 
-URLRouter lets Feature views navigate with one API: `openURL`. Register each Feature Package once in the App Shell, then use a complete HTTPS URL with a required `presentation` query item. Valid values are `push`, `tab`, `sheet`, and `fullScreenCover`. Production app shells can additionally enforce a versioned URL contract with `ModuleRoutePolicy`.
+URLRouter lets Feature views navigate with one API: `openURL`. Register each Feature Package once in the App Shell, then use a complete HTTPS URL with a required `presentation` query item. Valid values are `push`, `tab`, `sheet`, and `fullScreenCover`. Production app shells can additionally enforce a versioned URL contract with `ModuleRoutePolicy`, remotely restrict routes with `ModuleRoutePolicyStore`, and emit vendor-neutral telemetry through `ModuleRouteObservability`.
 
 ```text
 https://example.com/articles/42?presentation=push&version=1
@@ -188,6 +189,36 @@ Swift cannot discover unlinked packages at runtime. With two or more Feature Pac
 
 The registry rejects duplicate module IDs, a route returned by the wrong module, and push/sheet/full-screen routes without a destination. `ModuleRoutePolicy` lets the App Shell enforce contract versions, feature flags, authorization, and permitted presentation styles without coupling Feature Packages to those systems. Use `onFailure` to log rejected URLs and `onEvent` for privacy-conscious telemetry: each event includes a trace ID, outcome, route metadata, and no query values. A router has one active modal route: a new modal replaces the previous one, while push and tab routes dismiss the active modal before navigating. Repeated pushes of the same route are idempotent.
 
+## Production governance
+
+### Remote policy and emergency circuit breaker
+
+`ModuleRouteRemotePolicy` is a Codable restriction document that the App Shell can fetch from any approved remote-config service. The library never fetches configuration itself: the host must authenticate, validate, cache, and roll back the document. A remote policy can only restrict a local policy; it cannot grant authorization.
+
+```swift
+@State private var routePolicyStore = ModuleRoutePolicyStore(
+    localPolicy: ModuleRoutePolicy(
+        acceptedContractVersions: ["1"],
+        allowsUnversionedLinks: false
+    )
+)
+
+func applyTrustedRemotePolicy(_ data: Data) throws {
+    let remotePolicy = try JSONDecoder().decode(ModuleRouteRemotePolicy.self, from: data)
+    routePolicyStore.replaceRemotePolicy(with: remotePolicy)
+}
+```
+
+Set `isCircuitBreakerOpen` to `true` for an immediate, release-free stop to module routing. The same document can disable individual modules, provide an allow-list, reject presentation styles, or tighten accepted contract versions.
+
+### Unified observability
+
+Adopt `ModuleRouteObserving` in adapters for your logging, metrics, and tracing SDKs, then supply a `ModuleRouteObservability` instance to `moduleLinkRouting`. Each event carries a trace ID, outcome, host, module/route identity, presentation, and a stable `failureCode`; it deliberately excludes URL query values.
+
+### Route contract CI
+
+[`RouteContracts.json`](RouteContracts.json) is the source-controlled public route catalog. CI runs `Scripts/validate_route_contract.swift` before builds and rejects duplicate route IDs or path/presentation invocations, invalid presentation values, and contracts that omit required `presentation` or `version` parameters. Update the catalog, feature parser, release notes, and migration plan together whenever a public route changes.
+
 ## Routing scenarios
 
 | Intent | Feature code |
@@ -246,7 +277,7 @@ Both Packages depend on `URLRouter`, but they do not depend on each other. `Navi
 
 This boundary is intentional: use URL contracts for cross-feature navigation rather than importing another Feature Package merely to access its views or route types.
 
-`URLRouterDemo` is an iOS 17+ reference app that demonstrates the platform-neutral `RouterHost` composition, all four URL presentation styles, cross-package navigation, strict version-1 contract enforcement, and an in-app route telemetry status. The same `RouterHost`, `moduleLinkRouting`, and Feature Packages are available to apps targeting macOS 14+, tvOS 17+, or watchOS 10+; SwiftUI adapts their navigation and modal presentation to each platform. Because SwiftUI does not provide `fullScreenCover` on macOS, that presentation is rendered as a sheet there.
+`URLRouterDemo` is an iOS 17+ reference app that demonstrates the platform-neutral `RouterHost` composition, all four URL presentation styles, cross-package navigation, strict version-1 contract enforcement, an in-app route telemetry status, and the remote-policy emergency routing switch. The same `RouterHost`, `moduleLinkRouting`, and Feature Packages are available to apps targeting macOS 14+, tvOS 17+, or watchOS 10+; SwiftUI adapts their navigation and modal presentation to each platform. Because SwiftUI does not provide `fullScreenCover` on macOS, that presentation is rendered as a sheet there.
 
 Open `URLRouter.xcodeproj`, choose the **URLRouterDemo** scheme, select an iOS 17+ simulator, and run it. Xcode resolves both local packages automatically.
 
@@ -254,6 +285,7 @@ Run tests with:
 
 ```bash
 swift test
+swift Scripts/validate_route_contract.swift RouteContracts.json
 ```
 
 ## License

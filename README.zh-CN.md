@@ -13,8 +13,9 @@ URLRouter 是面向模块化 App 的 SwiftUI 路由基础库。Feature 页面统
 3. [配置 Universal Link](#配置-universal-link)
 4. [Feature Package](#feature-package)
 5. [App Shell](#app-shell)
-6. [常见路由场景](#常见路由场景)
-7. [Demo 与测试](#demo-与测试)
+6. [生产治理](#生产治理)
+7. [常见路由场景](#常见路由场景)
+8. [Demo 与测试](#demo-与测试)
 
 ## 安装
 
@@ -39,7 +40,7 @@ URLRouterDemo/            # SwiftUI Demo 应用
 
 ## 架构
 
-URLRouter 让 Feature 页面统一通过 `openURL` 跳转。App Shell 一次性注册各 Feature Package 后，使用完整 HTTPS URL 并携带必填 `presentation` query 即可。合法值为 `push`、`tab`、`sheet`、`fullScreenCover`。生产环境的 App Shell 还可通过 `ModuleRoutePolicy` 强制执行版本化 URL 协议。
+URLRouter 让 Feature 页面统一通过 `openURL` 跳转。App Shell 一次性注册各 Feature Package 后，使用完整 HTTPS URL 并携带必填 `presentation` query 即可。合法值为 `push`、`tab`、`sheet`、`fullScreenCover`。生产环境的 App Shell 还可通过 `ModuleRoutePolicy` 强制执行版本化 URL 协议，通过 `ModuleRoutePolicyStore` 接入远程限制，并通过 `ModuleRouteObservability` 输出供应商无关的遥测事件。
 
 ```text
 https://example.com/articles/42?presentation=push&version=1
@@ -186,6 +187,36 @@ Swift 无法在运行时发现未链接的 Package。存在两个或更多 Featu
 
 注册表会拒绝重复 module ID、由错误模块返回的 route，以及没有 destination 的 push/sheet/full-screen route。`ModuleRoutePolicy` 让 App Shell 在不耦合 Feature Package 的前提下执行协议版本、Feature 开关、权限和允许的展示方式。使用 `onFailure` 记录被拒绝的 URL，使用 `onEvent` 接入隐私友好的遥测：事件包含 trace ID、处理结果和 route 元数据，不包含 query value。Router 同一时刻只保留一个模态 route：新的模态 route 会替换旧的；push 和 tab route 会先关闭当前模态展示再导航；重复 push 相同 route 是幂等的。
 
+## 生产治理
+
+### 远程策略与紧急熔断
+
+`ModuleRouteRemotePolicy` 是可 `Codable` 解码的限制文档，App Shell 可从任意已批准的远程配置服务获取。库本身不访问网络：宿主 App 必须负责鉴权、验签、缓存和回滚。远程策略只能收紧本地策略，不能越过本地授权。
+
+```swift
+@State private var routePolicyStore = ModuleRoutePolicyStore(
+    localPolicy: ModuleRoutePolicy(
+        acceptedContractVersions: ["1"],
+        allowsUnversionedLinks: false
+    )
+)
+
+func applyTrustedRemotePolicy(_ data: Data) throws {
+    let remotePolicy = try JSONDecoder().decode(ModuleRouteRemotePolicy.self, from: data)
+    routePolicyStore.replaceRemotePolicy(with: remotePolicy)
+}
+```
+
+将 `isCircuitBreakerOpen` 设为 `true`，即可不发版立即停止模块路由。该文档还可禁用指定模块、提供允许列表、拒绝某些展示方式或进一步收紧支持的协议版本。
+
+### 统一可观测性
+
+为日志、指标、Tracing SDK 编写 `ModuleRouteObserving` 适配器，再将 `ModuleRouteObservability` 传给 `moduleLinkRouting`。每个事件包含 trace ID、结果、host、模块/路由标识、展示方式和稳定的 `failureCode`；它刻意不包含 URL query 值。
+
+### 路由契约 CI
+
+[`RouteContracts.json`](RouteContracts.json) 是受版本控制的公开路由目录。CI 会在构建前运行 `Scripts/validate_route_contract.swift`，拒绝重复的路由 ID 或路径/展示方式组合、非法展示方式，以及缺少 `presentation` 或 `version` 参数的契约。变更公开路由时，应同步更新目录、Feature 解析器、发布说明和迁移方案。
+
 ## 常见路由场景
 
 | 业务意图 | Feature 代码 |
@@ -244,7 +275,7 @@ Features/
 
 这是刻意设计的边界：跨 Feature 跳转应使用 URL 协议，不应为了访问对方 View 或路由类型而直接导入另一个 Feature Package。
 
-`URLRouterDemo` 是 iOS 17+ 的参考应用，演示了跨平台的 `RouterHost` 组合方式、四种 URL 展示方式、跨 Package 跳转、严格的 version=1 协议校验和应用内路由遥测状态。面向 macOS 14+、tvOS 17+ 或 watchOS 10+ 的 App 同样可使用 `RouterHost`、`moduleLinkRouting` 与 Feature Package；SwiftUI 会按平台适配导航和模态展示。由于 SwiftUI 在 macOS 上不提供 `fullScreenCover`，该展示方式会在 macOS 中以 sheet 呈现。
+`URLRouterDemo` 是 iOS 17+ 的参考应用，演示了跨平台的 `RouterHost` 组合方式、四种 URL 展示方式、跨 Package 跳转、严格的 version=1 协议校验、应用内路由遥测状态和远程策略紧急熔断开关。面向 macOS 14+、tvOS 17+ 或 watchOS 10+ 的 App 同样可使用 `RouterHost`、`moduleLinkRouting` 与 Feature Package；SwiftUI 会按平台适配导航和模态展示。由于 SwiftUI 在 macOS 上不提供 `fullScreenCover`，该展示方式会在 macOS 中以 sheet 呈现。
 
 打开 `URLRouter.xcodeproj`，选择 **URLRouterDemo** scheme 与 iOS 17+ simulator 后运行，Xcode 会自动解析两个本地 Package。
 
@@ -252,6 +283,7 @@ Features/
 
 ```bash
 swift test
+swift Scripts/validate_route_contract.swift RouteContracts.json
 ```
 
 ## 许可证
