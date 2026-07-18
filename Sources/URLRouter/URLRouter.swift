@@ -91,7 +91,7 @@ public final class ModuleRouteRegistry {
 }
 
 /// The single source of truth for one app scene's navigation state.
-@available(iOS 17.0, macOS 14.0, *)
+@available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
 @MainActor
 @Observable
 public final class ModuleRouter {
@@ -120,7 +120,7 @@ public final class ModuleRouter {
     func dismissFullScreenCover() { fullScreenCover = nil }
 }
 
-@available(iOS 17.0, macOS 14.0, *)
+@available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
 @MainActor
 public struct ModuleLinkRoutingModifier: ViewModifier {
     private let router: ModuleRouter
@@ -151,7 +151,7 @@ public struct ModuleLinkRoutingModifier: ViewModifier {
     }
 }
 
-@available(iOS 17.0, macOS 14.0, *)
+@available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
 public extension View {
     @MainActor
     /// Installs URLRouter once at the root of a scene.
@@ -161,8 +161,7 @@ public extension View {
 }
 
 /// A reusable SwiftUI shell for push, sheet, and full-screen-cover routes.
-#if os(iOS)
-@available(iOS 17.0, *)
+@available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
 @MainActor
 public struct RouterHost<Root: View, Destination: View>: View {
     @Bindable private var router: ModuleRouter
@@ -181,6 +180,19 @@ public struct RouterHost<Root: View, Destination: View>: View {
     }
 
     public var body: some View {
+#if os(macOS)
+        NavigationStack(path: $router.path) {
+            root().navigationDestination(for: ModuleRoute.self, destination: destination)
+        }
+        .sheet(isPresented: sheetIsPresented) {
+            if let route = router.sheet { destination(route) }
+        }
+        // SwiftUI does not offer fullScreenCover on macOS. Preserve the route
+        // contract by presenting that destination in a sheet on this platform.
+        .sheet(isPresented: fullScreenCoverIsPresented) {
+            if let route = router.fullScreenCover { destination(route) }
+        }
+#else
         NavigationStack(path: $router.path) {
             root().navigationDestination(for: ModuleRoute.self, destination: destination)
         }
@@ -190,6 +202,7 @@ public struct RouterHost<Root: View, Destination: View>: View {
         .fullScreenCover(isPresented: fullScreenCoverIsPresented) {
             if let route = router.fullScreenCover { destination(route) }
         }
+#endif
     }
 
     private var sheetIsPresented: Binding<Bool> {
@@ -200,4 +213,3 @@ public struct RouterHost<Root: View, Destination: View>: View {
         Binding(get: { router.fullScreenCover != nil }, set: { if !$0 { router.dismissFullScreenCover() } })
     }
 }
-#endif
