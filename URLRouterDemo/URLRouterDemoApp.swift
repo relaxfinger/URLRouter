@@ -15,15 +15,22 @@ import NavigationFeature
 /// The demo composes the same `RouterHost` API available to every supported platform.
 struct URLRouterDemoApp: App {
     @State private var router = ModuleRouter()
+    @State private var latestRouteEvent: ModuleRouteEvent?
 
     var body: some Scene {
         WindowGroup {
             RouterHost(router: router) {
-                DemoTabs(router: router)
+                DemoTabs(router: router, latestRouteEvent: latestRouteEvent)
             } destination: { route in
                 DemoModules.registry.destination(for: route)
             }
-            .moduleLinkRouting(router: router, registry: DemoModules.registry, allowedHosts: ["example.com"])
+            .moduleLinkRouting(
+                router: router,
+                registry: DemoModules.registry,
+                allowedHosts: ["example.com"],
+                policy: DemoModules.policy,
+                onEvent: { latestRouteEvent = $0 }
+            )
         }
     }
 
@@ -35,4 +42,8 @@ enum DemoModules {
         ContentFeature.module,
         NavigationFeatureRoutes.module
     ])
+    static let policy = ModuleRoutePolicy(
+        acceptedContractVersions: ["1"],
+        allowsUnversionedLinks: false
+    )
 }

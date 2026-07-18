@@ -41,13 +41,13 @@ URLRouterDemo/            # SwiftUI demo app
 
 ## Architecture
 
-URLRouter lets Feature views navigate with one API: `openURL`. Register each Feature Package once in the App Shell, then use a complete HTTPS URL with a required `presentation` query item. Valid values are `push`, `tab`, `sheet`, and `fullScreenCover`.
+URLRouter lets Feature views navigate with one API: `openURL`. Register each Feature Package once in the App Shell, then use a complete HTTPS URL with a required `presentation` query item. Valid values are `push`, `tab`, `sheet`, and `fullScreenCover`. Production app shells can additionally enforce a versioned URL contract with `ModuleRoutePolicy`.
 
 ```text
-https://example.com/articles/42?presentation=push
-https://example.com/favorites?presentation=tab
-https://example.com/settings?presentation=sheet
-https://example.com/sign-in?presentation=fullScreenCover
+https://example.com/articles/42?presentation=push&version=1
+https://example.com/favorites?presentation=tab&version=1
+https://example.com/settings?presentation=sheet&version=1
+https://example.com/sign-in?presentation=fullScreenCover&version=1
 ```
 
 
@@ -127,7 +127,7 @@ struct ArticleList: View {
 
     var body: some View {
         Button("Open article 42") {
-            openURL(URL(string: "https://example.com/articles/42?presentation=push")!)
+            openURL(URL(string: "https://example.com/articles/42?presentation=push&version=1")!)
         }
     }
 }
@@ -136,9 +136,9 @@ struct ArticleList: View {
 One `RouteModule` can therefore own multiple links. In this example, the Feature owns the following public URL contracts:
 
 ```text
-https://example.com/articles/42?presentation=push
-https://example.com/articles/42/comments?presentation=sheet
-https://example.com/articles/search?presentation=tab
+https://example.com/articles/42?presentation=push&version=1
+https://example.com/articles/42/comments?presentation=sheet&version=1
+https://example.com/articles/search?presentation=tab&version=1
 ```
 
 The path selects the `routeID` and parameters; `presentation` selects how SwiftUI displays the resolved destination.
@@ -151,6 +151,10 @@ The app links Feature Packages and registers them once. It never parses feature 
 @main
 struct MyApp: App {
     @State private var router = ModuleRouter()
+    private let routePolicy = ModuleRoutePolicy(
+        acceptedContractVersions: ["1"],
+        allowsUnversionedLinks: false
+    )
     private let registry = ModuleRouteRegistry(modules: [
         ArticleFeature.module,
         SettingsFeature.module
@@ -167,8 +171,12 @@ struct MyApp: App {
                 router: router,
                 registry: registry,
                 allowedHosts: ["example.com"],
+                policy: routePolicy,
                 onFailure: { url, error in
                     print("Discarded route \(url.absoluteString): \(error.localizedDescription)")
+                },
+                onEvent: { event in
+                    print("Route trace \(event.traceID): \(event.outcome.rawValue)")
                 }
             )
         }
@@ -178,16 +186,16 @@ struct MyApp: App {
 
 Swift cannot discover unlinked packages at runtime. With two or more Feature Packages, the App Shell adds each package's single `RouteModule` to this one registry. Adding a feature requires linking its package and adding that module, but never editing a central URL `switch`, path parser, or presentation mapping.
 
-The registry rejects duplicate module IDs, a route returned by the wrong module, and push/sheet/full-screen routes without a destination. Use `onFailure` to log or report those configuration and URL-contract failures. A router has one active modal route: a new modal replaces the previous one, while push and tab routes dismiss the active modal before navigating.
+The registry rejects duplicate module IDs, a route returned by the wrong module, and push/sheet/full-screen routes without a destination. `ModuleRoutePolicy` lets the App Shell enforce contract versions, feature flags, authorization, and permitted presentation styles without coupling Feature Packages to those systems. Use `onFailure` to log rejected URLs and `onEvent` for privacy-conscious telemetry: each event includes a trace ID, outcome, route metadata, and no query values. A router has one active modal route: a new modal replaces the previous one, while push and tab routes dismiss the active modal before navigating. Repeated pushes of the same route are idempotent.
 
 ## Routing scenarios
 
 | Intent | Feature code |
 | --- | --- |
-| Push detail | `openURL(URL(string: "https://example.com/articles/42?presentation=push")!)` |
-| Select tab | `openURL(URL(string: "https://example.com/favorites?presentation=tab")!)` |
-| Show sheet | `openURL(URL(string: "https://example.com/settings?presentation=sheet")!)` |
-| Full-screen flow | `openURL(URL(string: "https://example.com/sign-in?presentation=fullScreenCover")!)` |
+| Push detail | `openURL(URL(string: "https://example.com/articles/42?presentation=push&version=1")!)` |
+| Select tab | `openURL(URL(string: "https://example.com/favorites?presentation=tab&version=1")!)` |
+| Show sheet | `openURL(URL(string: "https://example.com/settings?presentation=sheet&version=1")!)` |
+| Full-screen flow | `openURL(URL(string: "https://example.com/sign-in?presentation=fullScreenCover&version=1")!)` |
 
 After asynchronous work, return to the main actor before calling `openURL`:
 
@@ -195,7 +203,7 @@ After asynchronous work, return to the main actor before calling `openURL`:
 Task {
     let id = try await articleService.recommendedArticleID()
     await MainActor.run {
-        openURL(URL(string: "https://example.com/articles/\(id)?presentation=push")!)
+        openURL(URL(string: "https://example.com/articles/\(id)?presentation=push&version=1")!)
     }
 }
 ```
@@ -209,7 +217,7 @@ Feature A does not import Feature B or reference its views. It emits Feature B's
 @Environment(\.openURL) private var openURL
 
 Button("Open content article") {
-    openURL(URL(string: "https://example.com/articles/42?presentation=push")!)
+    openURL(URL(string: "https://example.com/articles/42?presentation=push&version=1")!)
 }
 ```
 
@@ -218,7 +226,7 @@ Button("Open content article") {
 ```swift
 // Inside ContentFeature
 Button("Open settings") {
-    openURL(URL(string: "https://example.com/settings?presentation=sheet")!)
+    openURL(URL(string: "https://example.com/settings?presentation=sheet&version=1")!)
 }
 ```
 
@@ -238,7 +246,7 @@ Both Packages depend on `URLRouter`, but they do not depend on each other. `Navi
 
 This boundary is intentional: use URL contracts for cross-feature navigation rather than importing another Feature Package merely to access its views or route types.
 
-`URLRouterDemo` is an iOS 17+ reference app that demonstrates the platform-neutral `RouterHost` composition, all four URL presentation styles, and cross-package navigation. The same `RouterHost`, `moduleLinkRouting`, and Feature Packages are available to apps targeting macOS 14+, tvOS 17+, or watchOS 10+; SwiftUI adapts their navigation and modal presentation to each platform. Because SwiftUI does not provide `fullScreenCover` on macOS, that presentation is rendered as a sheet there.
+`URLRouterDemo` is an iOS 17+ reference app that demonstrates the platform-neutral `RouterHost` composition, all four URL presentation styles, cross-package navigation, strict version-1 contract enforcement, and an in-app route telemetry status. The same `RouterHost`, `moduleLinkRouting`, and Feature Packages are available to apps targeting macOS 14+, tvOS 17+, or watchOS 10+; SwiftUI adapts their navigation and modal presentation to each platform. Because SwiftUI does not provide `fullScreenCover` on macOS, that presentation is rendered as a sheet there.
 
 Open `URLRouter.xcodeproj`, choose the **URLRouterDemo** scheme, select an iOS 17+ simulator, and run it. Xcode resolves both local packages automatically.
 

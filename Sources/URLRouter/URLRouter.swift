@@ -25,7 +25,7 @@ public struct ModuleRoute: Hashable, Sendable {
 }
 
 /// The presentation contract encoded in an internal URL's `presentation` query item.
-public enum ModulePresentationStyle: String, Hashable, Sendable {
+public enum ModulePresentationStyle: String, CaseIterable, Hashable, Sendable {
     case push, tab, sheet, fullScreenCover
 }
 
@@ -164,12 +164,14 @@ public final class ModuleRouter {
         switch presentation.presentation {
         case .push:
             dismissModal()
+            guard path.last != presentation.route else { return }
             path.append(presentation.route)
         case .tab:
             dismissModal()
             selectedTab = presentation.route
             path.removeAll()
         case .sheet, .fullScreenCover:
+            guard modalPresentation != presentation else { return }
             modalPresentation = presentation
         }
     }
@@ -193,19 +195,25 @@ public struct ModuleLinkRoutingModifier: ViewModifier {
     private let router: ModuleRouter
     private let registry: ModuleRouteRegistry
     private let allowedHosts: Set<String>
+    private let policy: ModuleRoutePolicy
     private let onFailure: (URL, Error) -> Void
+    private let onEvent: (ModuleRouteEvent) -> Void
 
     /// Creates the root URL handler for trusted Universal Links and in-app `openURL` actions.
     public init(
         router: ModuleRouter,
         registry: ModuleRouteRegistry,
         allowedHosts: Set<String>,
-        onFailure: @escaping (URL, Error) -> Void = { _, _ in }
+        policy: ModuleRoutePolicy = .permissive,
+        onFailure: @escaping (URL, Error) -> Void = { _, _ in },
+        onEvent: @escaping (ModuleRouteEvent) -> Void = { _ in }
     ) {
         self.router = router
         self.registry = registry
         self.allowedHosts = allowedHosts
+        self.policy = policy
         self.onFailure = onFailure
+        self.onEvent = onEvent
     }
 
     public func body(content: Content) -> some View {
@@ -216,15 +224,38 @@ public struct ModuleLinkRoutingModifier: ViewModifier {
 
     private func route(_ url: URL) -> OpenURLAction.Result {
         guard let host = URLComponents(url: url, resolvingAgainstBaseURL: false)?.host?.lowercased(),
-              allowedHosts.contains(where: { $0.lowercased() == host }) else { return .systemAction }
+              allowedHosts.contains(where: { $0.lowercased() == host }) else {
+            emit(outcome: .systemAction, host: nil)
+            return .systemAction
+        }
         do {
-            let presentation = try registry.resolve(UniversalLink(url: url, allowedHosts: allowedHosts))
+            let link = try UniversalLink(url: url, allowedHosts: allowedHosts)
+            let presentation = try registry.resolve(link)
+            try policy.validate(link, presentation: presentation)
             router.apply(presentation)
+            emit(outcome: .handled, host: host, presentation: presentation)
             return .handled
         } catch {
             onFailure(url, error)
+            emit(outcome: .discarded, host: host, failure: error)
             return .discarded
         }
+    }
+
+    private func emit(
+        outcome: ModuleRouteEventOutcome,
+        host: String?,
+        presentation: ResolvedModuleRoute? = nil,
+        failure: Error? = nil
+    ) {
+        onEvent(ModuleRouteEvent(
+            outcome: outcome,
+            host: host,
+            moduleID: presentation?.route.moduleID,
+            routeID: presentation?.route.routeID,
+            presentation: presentation?.presentation,
+            failureDescription: failure?.localizedDescription
+        ))
     }
 }
 
@@ -236,9 +267,18 @@ public extension View {
         router: ModuleRouter,
         registry: ModuleRouteRegistry,
         allowedHosts: Set<String>,
-        onFailure: @escaping (URL, Error) -> Void = { _, _ in }
+        policy: ModuleRoutePolicy = .permissive,
+        onFailure: @escaping (URL, Error) -> Void = { _, _ in },
+        onEvent: @escaping (ModuleRouteEvent) -> Void = { _ in }
     ) -> some View {
-        modifier(ModuleLinkRoutingModifier(router: router, registry: registry, allowedHosts: allowedHosts, onFailure: onFailure))
+        modifier(ModuleLinkRoutingModifier(
+            router: router,
+            registry: registry,
+            allowedHosts: allowedHosts,
+            policy: policy,
+            onFailure: onFailure,
+            onEvent: onEvent
+        ))
     }
 }
 
