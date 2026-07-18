@@ -25,6 +25,18 @@ jobs:
           swift build
           --triple arm64-apple-watchos10.0-simulator
           --sdk "$(xcrun --sdk watchsimulator --show-sdk-path)"
+      - name: Build URLRouterPolicyProvider
+        run: swift build --target URLRouterPolicyProvider
+      - name: Build URLRouterPolicyProvider for tvOS
+        run: >-
+          swift build --target URLRouterPolicyProvider
+          --triple arm64-apple-tvos17.0-simulator
+          --sdk "$(xcrun --sdk appletvsimulator --show-sdk-path)"
+      - name: Build URLRouterPolicyProvider for watchOS
+        run: >-
+          swift build --target URLRouterPolicyProvider
+          --triple arm64-apple-watchos10.0-simulator
+          --sdk "$(xcrun --sdk watchsimulator --show-sdk-path)"
       - name: Build NavigationFeature
         run: swift build --package-path Features/NavigationFeature
       - name: Build NavigationFeature for tvOS

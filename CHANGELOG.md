@@ -4,6 +4,17 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [2.4.1] - 2026-07-18
+
+### Added
+
+- Optional `URLRouterPolicyProvider` product for cache-first remote-policy loading, TTL refreshes, stale-cache fallback, atomic policy replacement, and file or in-memory caching.
+- Extensible remote-source and payload-validation protocols so apps can use their own HTTP client, remote-config vendor, signed envelopes, and authentication.
+
+### Changed
+
+- Updated the demo and English/Chinese guides with the recommended App lifecycle: cache first, background refresh, foreground TTL refresh, and safe fallback.
+
 ## [2.4.0] - 2026-07-18
 
 ### Added

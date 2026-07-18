@@ -35,7 +35,9 @@ only as an executable demo host.
 
 ```text
 Sources/URLRouter/        # public library source
+Sources/URLRouterPolicyProvider/  # optional cache-first policy refresh module
 Tests/URLRouterTests/     # unit tests
+Tests/URLRouterPolicyProviderTests/ # provider unit tests
 Features/                 # local feature-package examples
 URLRouterDemo/            # SwiftUI demo app
 ```
@@ -195,6 +197,17 @@ The registry rejects duplicate module IDs, a route returned by the wrong module,
 
 `ModuleRouteRemotePolicy` is a Codable restriction document that the App Shell can fetch from any approved remote-config service. The library never fetches configuration itself: the host must authenticate, validate, cache, and roll back the document. A remote policy can only restrict a local policy; it cannot grant authorization.
 
+For the recommended cache-first app lifecycle, add the optional product from this same package:
+
+```swift
+.product(name: "URLRouterPolicyProvider", package: "URLRouter")
+```
+
+`URLRouterPolicyProvider` depends on `URLRouter`; the reverse is not true. It
+does not choose an HTTP client, remote-config vendor, or signing scheme. The
+App supplies those small adapters, while the provider handles cache-first
+startup, TTL, stale-cache fallback, and atomic replacement of the policy.
+
 ```swift
 @State private var routePolicyStore = ModuleRoutePolicyStore(
     localPolicy: ModuleRoutePolicy(
@@ -210,6 +223,65 @@ func applyTrustedRemotePolicy(_ data: Data) throws {
 ```
 
 Set `isCircuitBreakerOpen` to `true` for an immediate, release-free stop to module routing. The same document can disable individual modules, provide an allow-list, reject presentation styles, or tighten accepted contract versions.
+
+### Recommended app refresh strategy
+
+Use this sequence: read the last verified cache first, refresh in the
+background at cold start, refresh when the app becomes active after the TTL,
+and keep the last verified policy during a temporary outage. If no verified
+cache exists or it exceeds the hard stale limit, URLRouter keeps the App's
+local safe policy.
+
+```swift
+import URLRouter
+import URLRouterPolicyProvider
+
+struct CompanyPolicySource: RoutePolicyRemoteSource {
+    func fetchPolicyData() async throws -> Data {
+        let url = URL(string: "https://config.example.com/mobile/route-policy")!
+        let (data, response) = try await URLSession.shared.data(from: url)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+        return data
+    }
+}
+
+@MainActor
+final class AppRoutePolicySession {
+    let store = ModuleRoutePolicyStore(localPolicy: ModuleRoutePolicy(
+        acceptedContractVersions: ["1"],
+        allowsUnversionedLinks: false
+    ))
+    let provider: RoutePolicyProvider
+
+    init(cacheURL: URL) {
+        provider = RoutePolicyProvider(
+            store: store,
+            source: CompanyPolicySource(),
+            cache: FileRoutePolicyCache(url: cacheURL),
+            strategy: .standard // 30 min refresh, 1 h normal cache, 24 h hard stale limit
+        )
+    }
+
+    func start() async {
+        _ = await provider.bootstrap() // use verified disk cache; never waits for network
+        _ = await provider.refresh()   // fetch the newest policy in the background
+    }
+
+    func appBecameActive() async {
+        _ = await provider.refreshIfNeeded()
+    }
+}
+```
+
+Use `JSONRoutePolicyPayloadValidator` for a plain trusted JSON endpoint. For a
+signed response or envelope, implement `RoutePolicyPayloadValidating`; only a
+validated `ModuleRouteRemotePolicy` is cached or applied. For a normal policy,
+the standard timing is a 30-minute foreground refresh, one-hour normal cache,
+and 24-hour hard stale limit. Make the backend's emergency circuit-breaker
+delivery more frequent or push-triggered when your incident requirements need
+it.
 
 ### Unified observability
 
@@ -277,7 +349,7 @@ Both Packages depend on `URLRouter`, but they do not depend on each other. `Navi
 
 This boundary is intentional: use URL contracts for cross-feature navigation rather than importing another Feature Package merely to access its views or route types.
 
-`URLRouterDemo` is an iOS 17+ reference app that demonstrates the platform-neutral `RouterHost` composition, all four URL presentation styles, cross-package navigation, strict version-1 contract enforcement, an in-app route telemetry status, and the remote-policy emergency routing switch. The same `RouterHost`, `moduleLinkRouting`, and Feature Packages are available to apps targeting macOS 14+, tvOS 17+, or watchOS 10+; SwiftUI adapts their navigation and modal presentation to each platform. Because SwiftUI does not provide `fullScreenCover` on macOS, that presentation is rendered as a sheet there.
+`URLRouterDemo` is an iOS 17+ reference app that demonstrates the platform-neutral `RouterHost` composition, all four URL presentation styles, cross-package navigation, strict version-1 contract enforcement, an in-app route telemetry status, and the optional `URLRouterPolicyProvider` cache-first refresh lifecycle. Its `DemoPolicySource` is intentionally local; replace it with an App-owned source in production. The same `RouterHost`, `moduleLinkRouting`, and Feature Packages are available to apps targeting macOS 14+, tvOS 17+, or watchOS 10+; SwiftUI adapts their navigation and modal presentation to each platform. Because SwiftUI does not provide `fullScreenCover` on macOS, that presentation is rendered as a sheet there.
 
 Open `URLRouter.xcodeproj`, choose the **URLRouterDemo** scheme, select an iOS 17+ simulator, and run it. Xcode resolves both local packages automatically.
 
