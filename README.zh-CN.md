@@ -26,6 +26,17 @@ URLRouter 是面向模块化 App 的 SwiftUI 路由基础库。Feature 页面统
 - Swift 6 语言模式
 - Xcode 16 或更高版本
 
+### 包结构
+
+仓库遵循 Swift Package Manager 的标准目录约定。库与测试可直接由 SwiftPM 构建；Xcode 工程仅作为可运行的 Demo 宿主。
+
+```text
+Sources/URLRouter/        # 公共库源码
+Tests/URLRouterTests/     # 单元测试
+Features/                 # 本地 Feature Package 示例
+URLRouterDemo/            # SwiftUI Demo 应用
+```
+
 ## 架构
 
 URLRouter 让 Feature 页面统一通过 `openURL` 跳转。App Shell 一次性注册各 Feature Package 后，使用完整 HTTPS URL 并携带必填 `presentation` query 即可。合法值为 `push`、`tab`、`sheet`、`fullScreenCover`。

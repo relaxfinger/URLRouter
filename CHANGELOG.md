@@ -4,6 +4,13 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-07-18
+
+### Changed
+
+- Reorganized the library and its tests into the standard Swift Package Manager `Sources/` and `Tests/` layout.
+- Simplified the package manifest and kept the Xcode demo project aligned with the new source locations.
+
 ### Added
 
 - Module-owned URL routing with `presentation=push`, `tab`, `sheet`, or `fullScreenCover`.
