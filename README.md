@@ -166,7 +166,10 @@ struct MyApp: App {
             .moduleLinkRouting(
                 router: router,
                 registry: registry,
-                allowedHosts: ["example.com"]
+                allowedHosts: ["example.com"],
+                onFailure: { url, error in
+                    print("Discarded route \(url.absoluteString): \(error.localizedDescription)")
+                }
             )
         }
     }
@@ -174,6 +177,8 @@ struct MyApp: App {
 ```
 
 Swift cannot discover unlinked packages at runtime. With two or more Feature Packages, the App Shell adds each package's single `RouteModule` to this one registry. Adding a feature requires linking its package and adding that module, but never editing a central URL `switch`, path parser, or presentation mapping.
+
+The registry rejects duplicate module IDs, a route returned by the wrong module, and push/sheet/full-screen routes without a destination. Use `onFailure` to log or report those configuration and URL-contract failures. A router has one active modal route: a new modal replaces the previous one, while push and tab routes dismiss the active modal before navigating.
 
 ## Routing scenarios
 

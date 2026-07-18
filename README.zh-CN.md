@@ -164,7 +164,10 @@ struct MyApp: App {
             .moduleLinkRouting(
                 router: router,
                 registry: registry,
-                allowedHosts: ["example.com"]
+                allowedHosts: ["example.com"],
+                onFailure: { url, error in
+                    print("Discarded route \(url.absoluteString): \(error.localizedDescription)")
+                }
             )
         }
     }
@@ -172,6 +175,8 @@ struct MyApp: App {
 ```
 
 Swift 无法在运行时发现未链接的 Package。存在两个或更多 Feature Package 时，App Shell 只需将每个 Package 唯一的 `RouteModule` 放入同一个注册表。新增 Feature 时仍要链接其 Package 并注册该模块，但永远不需要改中心化 URL `switch`、路径解析或展示方式映射。
+
+注册表会拒绝重复 module ID、由错误模块返回的 route，以及没有 destination 的 push/sheet/full-screen route。使用 `onFailure` 记录或上报这些配置和 URL 协议错误。Router 同一时刻只保留一个模态 route：新的模态 route 会替换旧的；push 和 tab route 会先关闭当前模态展示再导航。
 
 ## 常见路由场景
 
