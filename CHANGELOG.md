@@ -4,6 +4,13 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [2.4.2] - 2026-07-18
+
+### Changed
+
+- Expanded the production-governance guides in English and Chinese with plain-language explanations, operating examples, and integration steps for remote policy/circuit breaking, observability, and route-contract CI.
+- Added English comments at URLRouter integration points in the demo so the scene host, policy lifecycle, observability, and circuit-breaker behavior are easy to follow.
+
 ## [2.4.1] - 2026-07-18
 
 ### Added

@@ -193,7 +193,20 @@ Swift 无法在运行时发现未链接的 Package。存在两个或更多 Featu
 
 ### 远程策略与紧急熔断
 
-`ModuleRouteRemotePolicy` 是可 `Codable` 解码的限制文档，App Shell 可从任意已批准的远程配置服务获取。库本身不访问网络：宿主 App 必须负责鉴权、验签、缓存和回滚。远程策略只能收紧本地策略，不能越过本地授权。
+先用人话说：远程策略就是后台随时能改的“路由开关表”。它解决的是“某个页面或功能出了事故，不能等 App Store 审核再修”的问题。例如文章模块有严重故障时，后台把 `content` 放进禁用列表；用户下一次打开文章链接时，App 会安全地拒绝跳转。若所有路由都存在风险，把 `isCircuitBreakerOpen` 设为 `true`，就像拉下总闸：所有模块路由立即停止，但 App 其他功能不受影响。
+
+后台下发的是一份普通 JSON，大意可以是：
+
+```json
+{
+  "isCircuitBreakerOpen": false,
+  "disabledModuleIDs": ["content"],
+  "allowedPresentationStyles": ["push", "tab"],
+  "acceptedContractVersions": ["1"]
+}
+```
+
+`ModuleRouteRemotePolicy` 负责把这份 JSON 表示为 Swift 数据。URLRouter 不会自己联网：宿主 App 负责从公司接口、Firebase 或其他配置服务获取数据，并负责鉴权、验签、缓存和回滚。远程策略只能**收紧**本地规则，不能绕过本地授权或放宽本地禁止的版本；因此即使远程配置异常，也不能把一个本来不应打开的路由放行。
 
 需要“先读缓存、后台刷新”的 App 生命周期时，可从同一个 Package 按需引入：
 
@@ -201,7 +214,16 @@ Swift 无法在运行时发现未链接的 Package。存在两个或更多 Featu
 .product(name: "URLRouterPolicyProvider", package: "URLRouter")
 ```
 
-`URLRouterPolicyProvider` 依赖 `URLRouter`，反过来核心库不依赖它。它不绑定 HTTP 客户端、远程配置厂商或签名方案；App 只实现这些小适配层，Provider 负责缓存优先启动、TTL、旧缓存回退和策略原子替换。
+`URLRouterPolicyProvider` 依赖 `URLRouter`，反过来核心库不依赖它。它不绑定 HTTP 客户端、远程配置厂商或签名方案；App 只实现“去哪里拿数据”和“如何验签”这两小部分，Provider 负责下面这套容易出错的流程：
+
+```text
+启动 App
+  → 先读取上一次已验证的本地缓存，马上可用
+  → 后台请求最新配置，不阻塞首屏
+  → 验签、解析、检查通过后一次性替换当前策略
+  → 保存新的可信缓存
+  → 请求失败时继续使用旧缓存；旧缓存太久则回退到 App 内置安全规则
+```
 
 ```swift
 @State private var routePolicyStore = ModuleRoutePolicyStore(
@@ -217,11 +239,11 @@ func applyTrustedRemotePolicy(_ data: Data) throws {
 }
 ```
 
-将 `isCircuitBreakerOpen` 设为 `true`，即可不发版立即停止模块路由。该文档还可禁用指定模块、提供允许列表、拒绝某些展示方式或进一步收紧支持的协议版本。
+怎么用：App 创建一个 `ModuleRoutePolicyStore` 并交给 `moduleLinkRouting`；随后只需要在拿到并验证新配置时调用 `replaceRemotePolicy`。下一次路由自动使用新规则，不需要重建界面或重新发版。将 `isCircuitBreakerOpen` 设为 `true`，即可不发版立即停止模块路由。该文档还可禁用指定模块、提供允许列表、拒绝某些展示方式或进一步收紧支持的协议版本。
 
 ### 推荐的 App 拉取策略
 
-建议顺序是：启动先读取上一次已验证缓存，再在后台刷新；App 回到前台且超过 TTL 时按需刷新；短暂断网时继续使用最后一次可信策略。没有可信缓存，或缓存超过硬过期时间时，URLRouter 保持 App 内置的安全本地策略。
+推荐策略不是“每次点链接都请求后台”，那样既慢又不可靠。建议顺序是：启动先读取上一次已验证缓存，再在后台刷新；App 回到前台且超过 TTL 时按需刷新；短暂断网时继续使用最后一次可信策略。没有可信缓存，或缓存超过硬过期时间时，URLRouter 保持 App 内置的安全本地策略。默认值是：前台 30 分钟刷新一次、普通缓存 1 小时、最多使用 24 小时的旧可信缓存；熔断要求更高的业务可缩短 TTL 或由静默推送触发立即刷新。
 
 ```swift
 import URLRouter
@@ -266,15 +288,35 @@ final class AppRoutePolicySession {
 }
 ```
 
-普通可信 JSON 接口可使用 `JSONRoutePolicyPayloadValidator`。如果响应有签名或信封结构，App 实现 `RoutePolicyPayloadValidating`；只有校验通过的 `ModuleRouteRemotePolicy` 才会写入缓存和生效。普通策略建议前台 30 分钟刷新、常规缓存 1 小时、硬过期 24 小时；对事故熔断，可按实际要求使用更短刷新间隔或静默推送触发刷新。
+普通可信 JSON 接口可使用 `JSONRoutePolicyPayloadValidator`。如果响应有签名或信封结构，App 实现 `RoutePolicyPayloadValidating`；只有校验通过的 `ModuleRouteRemotePolicy` 才会写入缓存和生效。这样即使网络被劫持、返回了损坏 JSON，当前正在使用的策略也不会被半成品覆盖。
 
 ### 统一可观测性
 
-为日志、指标、Tracing SDK 编写 `ModuleRouteObserving` 适配器，再将 `ModuleRouteObservability` 传给 `moduleLinkRouting`。每个事件包含 trace ID、结果、host、模块/路由标识、展示方式和稳定的 `failureCode`；它刻意不包含 URL query 值。
+先用人话说：统一可观测性就是给路由装“行车记录仪”。当用户说“点订单链接没反应”时，团队不需要猜；可以看到这次路由是成功、被熔断、版本不支持、模块关闭，还是 URL 本身不合法。它还能让监控系统在“某个失败原因突然暴增”时报警。
+
+怎么用：写一个很薄的适配器，把事件送到公司已有的日志、指标或追踪系统，再在根部传给 `moduleLinkRouting`。`ModuleRouteObservability` 可以同时发送给多个观察者，例如一个写日志、一个计数、一个上报 tracing。
+
+```swift
+@MainActor
+final class AppRouteObserver: ModuleRouteObserving {
+    func record(_ event: ModuleRouteEvent) {
+        logger.notice("route outcome=\(event.outcome.rawValue) trace=\(event.traceID)")
+        metrics.increment("route.\(event.failureCode ?? "handled")")
+    }
+}
+
+let observability = ModuleRouteObservability(observers: [AppRouteObserver()])
+```
+
+每个事件包含 trace ID、结果、host、模块/路由标识、展示方式和稳定的 `failureCode`。它刻意不包含 URL query 值、token、手机号等可能敏感的数据；需要排障时用 trace ID 关联 App 自己的受控日志即可。
 
 ### 路由契约 CI
 
-[`RouteContracts.json`](RouteContracts.json) 是受版本控制的公开路由目录。CI 会在构建前运行 `Scripts/validate_route_contract.swift`，拒绝重复的路由 ID 或路径/展示方式组合、非法展示方式，以及缺少 `presentation` 或 `version` 参数的契约。变更公开路由时，应同步更新目录、Feature 解析器、发布说明和迁移方案。
+先用人话说：路由契约 CI 就是把 URL 当成团队之间的“接口协议”来管理。`/articles/:id?presentation=push&version=1` 不只是一个字符串；其他 Feature、网页、推送和旧 App 都可能依赖它。没有这层检查时，团队 A 改了路径或展示方式，团队 B 往往要等线上链接失效才发现。
+
+[`RouteContracts.json`](RouteContracts.json) 是这份受版本控制的公开路由目录。每个条目声明谁拥有路由、路径长什么样、允许怎样展示、以及必须有哪些参数。CI 会在构建前运行 `Scripts/validate_route_contract.swift`，拒绝重复的路由 ID 或路径/展示方式组合、非法展示方式，以及缺少 `presentation` 或 `version` 参数的契约。
+
+怎么用：新增或修改公开链接时，按同一个 PR 同步修改四处：Feature 的 URL 解析器、`RouteContracts.json`、README/调用方示例、以及必要的迁移说明。CI 擅长阻止目录本身的结构错误；是否可以删除旧链接、旧版本如何迁移，则仍应在 PR 审查和发布说明中明确，这是为了避免把“自动检查”误当成“自动兼容”。
 
 ## 常见路由场景
 

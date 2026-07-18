@@ -7,12 +7,12 @@
 //
 
 import SwiftUI
-import URLRouter
+import URLRouter // ModuleRouter and ModuleRoutePolicyStore drive this tab shell.
 import NavigationFeature
 
 struct DemoTabs: View {
-    @Bindable private var router: ModuleRouter
-    @Bindable private var policyStore: ModuleRoutePolicyStore
+    @Bindable private var router: ModuleRouter // URLRouter owns the selected tab state.
+    @Bindable private var policyStore: ModuleRoutePolicyStore // URLRouter reads this on the next link.
     private let latestRouteEvent: ModuleRouteEvent?
     private let policyStatus: String
 
@@ -29,6 +29,7 @@ struct DemoTabs: View {
     }
 
     var body: some View {
+        // Bind SwiftUI tab selection to URLRouter's tab route state.
         TabView(selection: $router.selectedTab) {
             HomeView()
                 .tabItem { Label("Home", systemImage: "house") }
@@ -63,6 +64,7 @@ struct DemoTabs: View {
         Binding(
             get: { !(policyStore.remotePolicy?.isCircuitBreakerOpen ?? false) },
             set: { enabled in
+                // Simulate the backend circuit breaker by replacing URLRouter's remote policy.
                 policyStore.replaceRemotePolicy(with: ModuleRouteRemotePolicy(
                     isCircuitBreakerOpen: !enabled
                 ))

@@ -195,7 +195,20 @@ The registry rejects duplicate module IDs, a route returned by the wrong module,
 
 ### Remote policy and emergency circuit breaker
 
-`ModuleRouteRemotePolicy` is a Codable restriction document that the App Shell can fetch from any approved remote-config service. The library never fetches configuration itself: the host must authenticate, validate, cache, and roll back the document. A remote policy can only restrict a local policy; it cannot grant authorization.
+In plain terms, a remote policy is a route control panel that the backend can change without waiting for an App Store release. If the article module has an incident, the backend can disable `content`; the next article link is safely rejected. If routing itself is unsafe, setting `isCircuitBreakerOpen` to `true` pulls the main switch: all module routes stop immediately while the rest of the app continues to work.
+
+The backend sends ordinary JSON such as:
+
+```json
+{
+  "isCircuitBreakerOpen": false,
+  "disabledModuleIDs": ["content"],
+  "allowedPresentationStyles": ["push", "tab"],
+  "acceptedContractVersions": ["1"]
+}
+```
+
+`ModuleRouteRemotePolicy` represents this JSON in Swift. URLRouter never fetches configuration itself: the host app fetches it from a company service, Firebase, or another configuration service and owns authentication, signature verification, caching, and rollback. A remote policy can only **tighten** local rules; it cannot bypass local authorization or re-enable a locally rejected contract version.
 
 For the recommended cache-first app lifecycle, add the optional product from this same package:
 
@@ -205,8 +218,17 @@ For the recommended cache-first app lifecycle, add the optional product from thi
 
 `URLRouterPolicyProvider` depends on `URLRouter`; the reverse is not true. It
 does not choose an HTTP client, remote-config vendor, or signing scheme. The
-App supplies those small adapters, while the provider handles cache-first
-startup, TTL, stale-cache fallback, and atomic replacement of the policy.
+app supplies only where data comes from and how it is verified; the provider
+handles this failure-prone lifecycle:
+
+```text
+App starts
+  → restore the last verified local cache immediately
+  → fetch the newest policy in the background without blocking the first screen
+  → validate and atomically replace the active policy
+  → save the new verified cache
+  → keep the old cache after a temporary failure; fall back to local safe rules when it is too old
+```
 
 ```swift
 @State private var routePolicyStore = ModuleRoutePolicyStore(
@@ -222,15 +244,11 @@ func applyTrustedRemotePolicy(_ data: Data) throws {
 }
 ```
 
-Set `isCircuitBreakerOpen` to `true` for an immediate, release-free stop to module routing. The same document can disable individual modules, provide an allow-list, reject presentation styles, or tighten accepted contract versions.
+To use it, the app gives a `ModuleRoutePolicyStore` to `moduleLinkRouting`, then calls `replaceRemotePolicy` only after receiving and validating a new policy. The next route automatically uses the new rules; no view rebuild or app release is needed. Set `isCircuitBreakerOpen` to `true` for an immediate stop to module routing. The same document can disable individual modules, provide an allow-list, reject presentation styles, or tighten accepted contract versions.
 
 ### Recommended app refresh strategy
 
-Use this sequence: read the last verified cache first, refresh in the
-background at cold start, refresh when the app becomes active after the TTL,
-and keep the last verified policy during a temporary outage. If no verified
-cache exists or it exceeds the hard stale limit, URLRouter keeps the App's
-local safe policy.
+Do not fetch the backend for every link: that is slow and unreliable. Use this sequence instead: read the last verified cache first, refresh in the background at cold start, refresh when the app becomes active after the TTL, and keep the last verified policy during a temporary outage. If no verified cache exists or it exceeds the hard stale limit, URLRouter keeps the app's local safe policy. The defaults are a 30-minute foreground refresh, one-hour normal cache, and a 24-hour hard stale limit. Use a shorter TTL or push-triggered refresh for incident-sensitive circuit breakers.
 
 ```swift
 import URLRouter
@@ -277,19 +295,37 @@ final class AppRoutePolicySession {
 
 Use `JSONRoutePolicyPayloadValidator` for a plain trusted JSON endpoint. For a
 signed response or envelope, implement `RoutePolicyPayloadValidating`; only a
-validated `ModuleRouteRemotePolicy` is cached or applied. For a normal policy,
-the standard timing is a 30-minute foreground refresh, one-hour normal cache,
-and 24-hour hard stale limit. Make the backend's emergency circuit-breaker
-delivery more frequent or push-triggered when your incident requirements need
-it.
+validated `ModuleRouteRemotePolicy` is cached or applied. A corrupted response
+or intercepted network payload therefore cannot replace the current working
+policy with a partial value.
 
 ### Unified observability
 
-Adopt `ModuleRouteObserving` in adapters for your logging, metrics, and tracing SDKs, then supply a `ModuleRouteObservability` instance to `moduleLinkRouting`. Each event carries a trace ID, outcome, host, module/route identity, presentation, and a stable `failureCode`; it deliberately excludes URL query values.
+In plain terms, unified observability is a dashcam for routing. When a user says “the order link did nothing,” the team can see whether the route succeeded, was circuit-broken, used an unsupported version, targeted a disabled module, or was malformed. It also lets monitoring alert when one failure reason suddenly spikes.
+
+To use it, write a small adapter that forwards an event to the logging, metrics, or tracing systems your company already uses, then pass it to `moduleLinkRouting`. `ModuleRouteObservability` can fan each event out to multiple observers: for example, one logs and one increments a metric.
+
+```swift
+@MainActor
+final class AppRouteObserver: ModuleRouteObserving {
+    func record(_ event: ModuleRouteEvent) {
+        logger.notice("route outcome=\(event.outcome.rawValue) trace=\(event.traceID)")
+        metrics.increment("route.\(event.failureCode ?? "handled")")
+    }
+}
+
+let observability = ModuleRouteObservability(observers: [AppRouteObserver()])
+```
+
+Each event carries a trace ID, outcome, host, module/route identity, presentation, and a stable `failureCode`. It deliberately excludes URL query values, tokens, phone numbers, and other potentially sensitive data. Use the trace ID to correlate with your app's controlled logs when troubleshooting.
 
 ### Route contract CI
 
-[`RouteContracts.json`](RouteContracts.json) is the source-controlled public route catalog. CI runs `Scripts/validate_route_contract.swift` before builds and rejects duplicate route IDs or path/presentation invocations, invalid presentation values, and contracts that omit required `presentation` or `version` parameters. Update the catalog, feature parser, release notes, and migration plan together whenever a public route changes.
+In plain terms, route contract CI treats a URL as an interface agreement between teams. `/articles/:id?presentation=push&version=1` is not just a string: another Feature, a web page, a push notification, or an older app may depend on it. Without this check, one team can change a path or presentation and another team discovers broken links only in production.
+
+[`RouteContracts.json`](RouteContracts.json) is the source-controlled public route catalog. Every entry states who owns a route, its path shape, permitted presentation styles, and required parameters. CI runs `Scripts/validate_route_contract.swift` before builds and rejects duplicate route IDs or path/presentation invocations, invalid presentation values, and contracts that omit required `presentation` or `version` parameters.
+
+To use it, update four things in the same PR whenever a public link changes: the Feature URL parser, `RouteContracts.json`, the README/caller examples, and any required migration notes. CI catches structural catalog mistakes; whether an old URL can be removed and how old clients migrate must still be explicit in PR review and release notes. That distinction prevents “automatic validation” from being mistaken for “automatic compatibility.”
 
 ## Routing scenarios
 
