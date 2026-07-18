@@ -4,8 +4,13 @@ import PackageDescription
 
 let package = Package(
     name: "NavigationFeature",
-    // Apple 2023 platform generation: iOS 17 and macOS 14.
-    platforms: [.iOS(.v17), .macOS(.v14)],
+    // Apple 2023 platform generation.
+    platforms: [
+        .iOS(.v17),
+        .macOS(.v14),
+        .tvOS(.v17),
+        .watchOS(.v10)
+    ],
     products: [.library(name: "NavigationFeature", targets: ["NavigationFeature"])],
     dependencies: [.package(path: "../..")],
     targets: [

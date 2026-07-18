@@ -2,7 +2,7 @@
 
 [🇨🇳 中文](README.zh-CN.md)
 
-> iOS 17+ · Swift 6 · SwiftUI · Universal Links · modular `openURL` routing
+> iOS 17+ · macOS 14+ · tvOS 17+ · watchOS 10+ · Swift 6 · SwiftUI · modular `openURL` routing
 
 URLRouter is a SwiftUI routing foundation for modular apps. Feature code always navigates with `openURL`; URLRouter validates the URL, finds the owning Feature Package, and applies the presentation encoded in the URL.
 
@@ -18,11 +18,11 @@ URLRouter is a SwiftUI routing foundation for modular apps. Feature code always 
 
 ## Install
 
-Add `https://github.com/relaxfinger/URLRouter.git` in **File > Add Package Dependencies…**, then import `URLRouter`. The minimum deployment target is iOS 17.
+Add `https://github.com/relaxfinger/URLRouter.git` in **File > Add Package Dependencies…**, then import `URLRouter`. The minimum deployment target is iOS 17, macOS 14, tvOS 17, or watchOS 10.
 
 ### Compatibility
 
-- Apple 2023 platform generation: iOS 17+ and macOS 14+
+- Apple 2023 platform generation: iOS 17+, macOS 14+, tvOS 17+, and watchOS 10+
 - Swift 6 language mode
 - Xcode 16 or later
 
@@ -233,7 +233,9 @@ Both Packages depend on `URLRouter`, but they do not depend on each other. `Navi
 
 This boundary is intentional: use URL contracts for cross-feature navigation rather than importing another Feature Package merely to access its views or route types.
 
-Open `URLRouter.xcodeproj`, choose the **URLRouterDemo** scheme, select an iOS 17+ simulator, and run it. Xcode resolves both local packages automatically. The demo shows all four URL presentation styles and cross-package navigation.
+`URLRouterDemo` is an iOS 17+ reference app that demonstrates the platform-neutral `RouterHost` composition, all four URL presentation styles, and cross-package navigation. The same `RouterHost`, `moduleLinkRouting`, and Feature Packages are available to apps targeting macOS 14+, tvOS 17+, or watchOS 10+; SwiftUI adapts their navigation and modal presentation to each platform. Because SwiftUI does not provide `fullScreenCover` on macOS, that presentation is rendered as a sheet there.
+
+Open `URLRouter.xcodeproj`, choose the **URLRouterDemo** scheme, select an iOS 17+ simulator, and run it. Xcode resolves both local packages automatically.
 
 Run tests with:
 

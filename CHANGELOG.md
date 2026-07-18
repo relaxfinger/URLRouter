@@ -4,6 +4,17 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-07-18
+
+### Added
+
+- tvOS 17+ and watchOS 10+ support for URLRouter and its local Feature Packages.
+- Cross-platform `RouterHost` support for iOS, macOS, tvOS, and watchOS.
+
+### Changed
+
+- Expanded platform and demo documentation to cover every supported Apple platform.
+
 ## [2.0.3] - 2026-07-18
 
 ### Changed

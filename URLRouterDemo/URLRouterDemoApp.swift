@@ -12,6 +12,7 @@ import ContentFeature
 import NavigationFeature
 
 @main
+/// The demo composes the same `RouterHost` API available to every supported platform.
 struct URLRouterDemoApp: App {
     @State private var router = ModuleRouter()
 

@@ -2,7 +2,7 @@
 
 [🇺🇸 English](README.md)
 
-> iOS 17+ · Swift 6 · SwiftUI · Universal Links · 模块化 `openURL` 路由
+> iOS 17+ · macOS 14+ · tvOS 17+ · watchOS 10+ · Swift 6 · SwiftUI · 模块化 `openURL` 路由
 
 URLRouter 是面向模块化 App 的 SwiftUI 路由基础库。Feature 页面统一使用 `openURL` 跳转；URLRouter 负责校验 URL、找到所属 Feature Package，并执行 URL 中声明的展示方式。
 
@@ -18,11 +18,11 @@ URLRouter 是面向模块化 App 的 SwiftUI 路由基础库。Feature 页面统
 
 ## 安装
 
-在 Xcode 的 **File > Add Package Dependencies…** 添加 `https://github.com/relaxfinger/URLRouter.git`，随后导入 `URLRouter`。最低支持 iOS 17。
+在 Xcode 的 **File > Add Package Dependencies…** 添加 `https://github.com/relaxfinger/URLRouter.git`，随后导入 `URLRouter`。最低支持 iOS 17、macOS 14、tvOS 17 或 watchOS 10。
 
 ### 兼容性
 
-- Apple 2023 年同代系统：iOS 17+ 与 macOS 14+
+- Apple 2023 年同代系统：iOS 17+、macOS 14+、tvOS 17+ 与 watchOS 10+
 - Swift 6 语言模式
 - Xcode 16 或更高版本
 
@@ -231,7 +231,9 @@ Features/
 
 这是刻意设计的边界：跨 Feature 跳转应使用 URL 协议，不应为了访问对方 View 或路由类型而直接导入另一个 Feature Package。
 
-打开 `URLRouter.xcodeproj`，选择 **URLRouterDemo** scheme 与 iOS 17+ simulator 后运行，Xcode 会自动解析两个本地 Package。Demo 展示四种 URL 展示方式和跨 Package 跳转。
+`URLRouterDemo` 是 iOS 17+ 的参考应用，演示了跨平台的 `RouterHost` 组合方式、四种 URL 展示方式和跨 Package 跳转。面向 macOS 14+、tvOS 17+ 或 watchOS 10+ 的 App 同样可使用 `RouterHost`、`moduleLinkRouting` 与 Feature Package；SwiftUI 会按平台适配导航和模态展示。由于 SwiftUI 在 macOS 上不提供 `fullScreenCover`，该展示方式会在 macOS 中以 sheet 呈现。
+
+打开 `URLRouter.xcodeproj`，选择 **URLRouterDemo** scheme 与 iOS 17+ simulator 后运行，Xcode 会自动解析两个本地 Package。
 
 运行测试：
 

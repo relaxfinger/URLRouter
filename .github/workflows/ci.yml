@@ -13,10 +13,40 @@ jobs:
       - uses: actions/checkout@v4
       - name: Test URLRouter
         run: swift test
+      - name: Build URLRouter for tvOS
+        run: >-
+          swift build
+          --triple arm64-apple-tvos17.0-simulator
+          --sdk "$(xcrun --sdk appletvsimulator --show-sdk-path)"
+      - name: Build URLRouter for watchOS
+        run: >-
+          swift build
+          --triple arm64-apple-watchos10.0-simulator
+          --sdk "$(xcrun --sdk watchsimulator --show-sdk-path)"
       - name: Build NavigationFeature
         run: swift build --package-path Features/NavigationFeature
+      - name: Build NavigationFeature for tvOS
+        run: >-
+          swift build --package-path Features/NavigationFeature
+          --triple arm64-apple-tvos17.0-simulator
+          --sdk "$(xcrun --sdk appletvsimulator --show-sdk-path)"
+      - name: Build NavigationFeature for watchOS
+        run: >-
+          swift build --package-path Features/NavigationFeature
+          --triple arm64-apple-watchos10.0-simulator
+          --sdk "$(xcrun --sdk watchsimulator --show-sdk-path)"
       - name: Build ContentFeature
         run: swift build --package-path Features/ContentFeature
+      - name: Build ContentFeature for tvOS
+        run: >-
+          swift build --package-path Features/ContentFeature
+          --triple arm64-apple-tvos17.0-simulator
+          --sdk "$(xcrun --sdk appletvsimulator --show-sdk-path)"
+      - name: Build ContentFeature for watchOS
+        run: >-
+          swift build --package-path Features/ContentFeature
+          --triple arm64-apple-watchos10.0-simulator
+          --sdk "$(xcrun --sdk watchsimulator --show-sdk-path)"
       - name: Build demo
         run: >-
           xcodebuild build
