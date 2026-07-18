@@ -22,7 +22,7 @@ Add `https://github.com/relaxfinger/URLRouter.git` in **File > Add Package Depen
 
 ### Compatibility
 
-- iOS 17+ and macOS 14+
+- Apple 2023 platform generation: iOS 17+ and macOS 14+
 - Swift 6 language mode
 - Xcode 16 or later
 

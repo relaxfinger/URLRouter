@@ -22,7 +22,7 @@ URLRouter 是面向模块化 App 的 SwiftUI 路由基础库。Feature 页面统
 
 ### 兼容性
 
-- iOS 17+ 与 macOS 14+
+- Apple 2023 年同代系统：iOS 17+ 与 macOS 14+
 - Swift 6 语言模式
 - Xcode 16 或更高版本
 

@@ -4,6 +4,13 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [2.0.3] - 2026-07-18
+
+### Changed
+
+- Standardized the documented platform baseline on Apple's 2023 release generation: iOS 17+ and macOS 14+.
+- Applied the same platform-generation policy to the root package and both local Feature Packages.
+
 ## [2.0.2] - 2026-07-18
 
 ### Changed

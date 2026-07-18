@@ -5,6 +5,7 @@ import PackageDescription
 let package = Package(
     name: "URLRouter",
     defaultLocalization: "en",
+    // Apple 2023 platform generation: iOS 17 and macOS 14.
     platforms: [.iOS(.v17), .macOS(.v14)],
     products: [
         .library(
