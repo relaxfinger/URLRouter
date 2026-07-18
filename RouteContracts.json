@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "supportedVersions": ["1"],
+  "routes": [
+    {
+      "moduleID": "content",
+      "routeID": "article",
+      "pathTemplate": "/articles/:id",
+      "presentations": ["push"],
+      "requiredQueryItems": ["presentation", "version"]
+    },
+    {
+      "moduleID": "navigation",
+      "routeID": "home",
+      "pathTemplate": "/",
+      "presentations": ["tab"],
+      "requiredQueryItems": ["presentation", "version"]
+    },
+    {
+      "moduleID": "navigation",
+      "routeID": "favorites",
+      "pathTemplate": "/favorites",
+      "presentations": ["tab"],
+      "requiredQueryItems": ["presentation", "version"]
+    },
+    {
+      "moduleID": "navigation",
+      "routeID": "settings",
+      "pathTemplate": "/settings",
+      "presentations": ["sheet"],
+      "requiredQueryItems": ["presentation", "version"]
+    },
+    {
+      "moduleID": "navigation",
+      "routeID": "signIn",
+      "pathTemplate": "/sign-in",
+      "presentations": ["fullScreenCover"],
+      "requiredQueryItems": ["presentation", "version"]
+    }
+  ]
+}

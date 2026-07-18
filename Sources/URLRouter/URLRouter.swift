@@ -25,7 +25,7 @@ public struct ModuleRoute: Hashable, Sendable {
 }
 
 /// The presentation contract encoded in an internal URL's `presentation` query item.
-public enum ModulePresentationStyle: String, CaseIterable, Hashable, Sendable {
+public enum ModulePresentationStyle: String, CaseIterable, Codable, Hashable, Sendable {
     case push, tab, sheet, fullScreenCover
 }
 
@@ -196,6 +196,8 @@ public struct ModuleLinkRoutingModifier: ViewModifier {
     private let registry: ModuleRouteRegistry
     private let allowedHosts: Set<String>
     private let policy: ModuleRoutePolicy
+    private let policyStore: ModuleRoutePolicyStore?
+    private let observability: ModuleRouteObservability?
     private let onFailure: (URL, Error) -> Void
     private let onEvent: (ModuleRouteEvent) -> Void
 
@@ -205,6 +207,8 @@ public struct ModuleLinkRoutingModifier: ViewModifier {
         registry: ModuleRouteRegistry,
         allowedHosts: Set<String>,
         policy: ModuleRoutePolicy = .permissive,
+        policyStore: ModuleRoutePolicyStore? = nil,
+        observability: ModuleRouteObservability? = nil,
         onFailure: @escaping (URL, Error) -> Void = { _, _ in },
         onEvent: @escaping (ModuleRouteEvent) -> Void = { _ in }
     ) {
@@ -212,6 +216,8 @@ public struct ModuleLinkRoutingModifier: ViewModifier {
         self.registry = registry
         self.allowedHosts = allowedHosts
         self.policy = policy
+        self.policyStore = policyStore
+        self.observability = observability
         self.onFailure = onFailure
         self.onEvent = onEvent
     }
@@ -231,7 +237,11 @@ public struct ModuleLinkRoutingModifier: ViewModifier {
         do {
             let link = try UniversalLink(url: url, allowedHosts: allowedHosts)
             let presentation = try registry.resolve(link)
-            try policy.validate(link, presentation: presentation)
+            if let policyStore {
+                try policyStore.validate(link, presentation: presentation)
+            } else {
+                try policy.validate(link, presentation: presentation)
+            }
             router.apply(presentation)
             emit(outcome: .handled, host: host, presentation: presentation)
             return .handled
@@ -248,14 +258,52 @@ public struct ModuleLinkRoutingModifier: ViewModifier {
         presentation: ResolvedModuleRoute? = nil,
         failure: Error? = nil
     ) {
-        onEvent(ModuleRouteEvent(
+        let event = ModuleRouteEvent(
             outcome: outcome,
             host: host,
             moduleID: presentation?.route.moduleID,
             routeID: presentation?.route.routeID,
             presentation: presentation?.presentation,
+            failureCode: failure.map(routeFailureCode),
             failureDescription: failure?.localizedDescription
-        ))
+        )
+        observability?.record(event)
+        onEvent(event)
+    }
+
+    private func routeFailureCode(_ error: Error) -> String {
+        if let error = error as? ModuleRoutePolicyError {
+            return switch error {
+            case .missingContractVersion: "policy.missing_contract_version"
+            case .unsupportedContractVersion: "policy.unsupported_contract_version"
+            case .presentationNotAllowed: "policy.presentation_not_allowed"
+            case .moduleDisabled: "policy.module_disabled"
+            case .unauthorized: "policy.unauthorized"
+            case .routingSuspended: "policy.routing_suspended"
+            }
+        }
+        if let error = error as? ModuleRouteRegistryError {
+            return switch error {
+            case .duplicateModuleID: "registry.duplicate_module_id"
+            case .routeModuleMismatch: "registry.module_mismatch"
+            case .unavailableDestination: "registry.unavailable_destination"
+            }
+        }
+        if let error = error as? UniversalLinkError {
+            return switch error {
+            case .invalidURL: "link.invalid_url"
+            case .unsupportedScheme: "link.unsupported_scheme"
+            case .untrustedHost: "link.untrusted_host"
+            case .credentialsAreNotAllowed: "link.credentials_not_allowed"
+            case .unsupportedPort: "link.unsupported_port"
+            case .fragmentIsNotAllowed: "link.fragment_not_allowed"
+            case .invalidPathEncoding: "link.invalid_path_encoding"
+            case .duplicateQueryItem: "link.duplicate_query_item"
+            case .missingQueryValue: "link.missing_query_value"
+            case .unsupportedRoute: "link.unsupported_route"
+            }
+        }
+        return "route.unknown_failure"
     }
 }
 
@@ -268,6 +316,8 @@ public extension View {
         registry: ModuleRouteRegistry,
         allowedHosts: Set<String>,
         policy: ModuleRoutePolicy = .permissive,
+        policyStore: ModuleRoutePolicyStore? = nil,
+        observability: ModuleRouteObservability? = nil,
         onFailure: @escaping (URL, Error) -> Void = { _, _ in },
         onEvent: @escaping (ModuleRouteEvent) -> Void = { _ in }
     ) -> some View {
@@ -276,6 +326,8 @@ public extension View {
             registry: registry,
             allowedHosts: allowedHosts,
             policy: policy,
+            policyStore: policyStore,
+            observability: observability,
             onFailure: onFailure,
             onEvent: onEvent
         ))

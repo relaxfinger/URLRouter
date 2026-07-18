@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import Observation
 import URLRouter
 import ContentFeature
 import NavigationFeature
@@ -15,12 +16,17 @@ import NavigationFeature
 /// The demo composes the same `RouterHost` API available to every supported platform.
 struct URLRouterDemoApp: App {
     @State private var router = ModuleRouter()
-    @State private var latestRouteEvent: ModuleRouteEvent?
+    @State private var policyStore = DemoModules.makePolicyStore()
+    @State private var routeObserver = DemoRouteObserver()
 
     var body: some Scene {
         WindowGroup {
             RouterHost(router: router) {
-                DemoTabs(router: router, latestRouteEvent: latestRouteEvent)
+                DemoTabs(
+                    router: router,
+                    policyStore: policyStore,
+                    latestRouteEvent: routeObserver.latestEvent
+                )
             } destination: { route in
                 DemoModules.registry.destination(for: route)
             }
@@ -28,8 +34,8 @@ struct URLRouterDemoApp: App {
                 router: router,
                 registry: DemoModules.registry,
                 allowedHosts: ["example.com"],
-                policy: DemoModules.policy,
-                onEvent: { latestRouteEvent = $0 }
+                policyStore: policyStore,
+                observability: ModuleRouteObservability(observers: [routeObserver])
             )
         }
     }
@@ -42,8 +48,23 @@ enum DemoModules {
         ContentFeature.module,
         NavigationFeatureRoutes.module
     ])
-    static let policy = ModuleRoutePolicy(
-        acceptedContractVersions: ["1"],
-        allowsUnversionedLinks: false
-    )
+    static func makePolicyStore() -> ModuleRoutePolicyStore {
+        ModuleRoutePolicyStore(
+            localPolicy: ModuleRoutePolicy(
+                acceptedContractVersions: ["1"],
+                allowsUnversionedLinks: false
+            ),
+            remotePolicy: ModuleRouteRemotePolicy()
+        )
+    }
+}
+
+@MainActor
+@Observable
+final class DemoRouteObserver: ModuleRouteObserving {
+    private(set) var latestEvent: ModuleRouteEvent?
+
+    func record(_ event: ModuleRouteEvent) {
+        latestEvent = event
+    }
 }

@@ -4,6 +4,19 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-07-18
+
+### Added
+
+- `ModuleRoutePolicyStore` and Codable `ModuleRouteRemotePolicy` for remotely managed route restrictions, per-module controls, and an emergency circuit breaker.
+- Vendor-neutral `ModuleRouteObservability`, stable failure codes, and observer fan-out for logging, metrics, and tracing adapters.
+- Source-controlled `RouteContracts.json` and CI validation for route identity, path/presentation uniqueness, and required URL parameters.
+
+### Changed
+
+- Updated the demo with a live routing circuit-breaker control and telemetry status.
+- Updated English and Chinese integration guides with remote-policy, observability, and contract-CI guidance.
+
 ## [2.3.0] - 2026-07-18
 
 ### Added
