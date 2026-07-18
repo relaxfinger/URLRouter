@@ -191,6 +191,47 @@ Swift cannot discover unlinked packages at runtime. With two or more Feature Pac
 
 The registry rejects duplicate module IDs, a route returned by the wrong module, and push/sheet/full-screen routes without a destination. `ModuleRoutePolicy` lets the App Shell enforce contract versions, feature flags, authorization, and permitted presentation styles without coupling Feature Packages to those systems. Use `onFailure` to log rejected URLs and `onEvent` for privacy-conscious telemetry: each event includes a trace ID, outcome, route metadata, and no query values. A router has one active modal route: a new modal replaces the previous one, while push and tab routes dismiss the active modal before navigating. Repeated pushes of the same route are idempotent.
 
+### When several links arrive at once
+
+On a busy app, a push notification, a Universal Link, and a button tap can all ask to navigate at nearly the same moment. Applying each one immediately makes the final screen depend on timing, and can make SwiftUI replace a sheet while it is still animating.
+
+`ModuleRouteCoordinator` is the scene's small waiting line. Give it the same router and registry, then install it instead of the direct handler. It gathers requests that arrive together, keeps only one copy of the exact same URL, and applies routes one at a time. This is deliberately not a login manager: the app still decides whether a route is authorized and which priority it deserves.
+
+```swift
+@State private var router: ModuleRouter
+@State private var routeCoordinator: ModuleRouteCoordinator
+
+init() {
+    let router = ModuleRouter()
+    _router = State(initialValue: router)
+    _routeCoordinator = State(initialValue: ModuleRouteCoordinator(
+        router: router,
+        registry: AppModules.registry,
+        allowedHosts: ["example.com"]
+    ))
+}
+
+var body: some Scene {
+    WindowGroup {
+        RouterHost(router: router) { AppTabs(router: router) } destination: {
+            AppModules.registry.destination(for: $0)
+        }
+        .moduleLinkRouting(coordinator: routeCoordinator)
+    }
+}
+```
+
+Its default rules are intentionally easy to reason about:
+
+- One scene has one coordinator; separate windows do not block each other.
+- The same URL already waiting or being shown is merged instead of opening twice.
+- `critical` goes before `external`, then `userInitiated`, then `background`. Requests at the same level keep arrival order.
+- At most ten routes wait. When full, a higher-priority route replaces the oldest lower-priority one; otherwise the new route is refused.
+- A waiting route expires after 30 seconds by default. That avoids unexpectedly opening an old notification after the user has moved on.
+- The route is checked once on arrival and again immediately before navigation, so a policy or circuit-breaker change while it waits is still respected.
+
+For app-owned calls, use `route(_:priority:expiresAt:)`; external `openURL` and Universal Link requests use `.external` automatically. Queue outcomes are sent through the same observability hooks: `queue.duplicate_merged`, `queue.full`, and `queue.request_expired`. Tune the limits with `ModuleRouteCoordinatorConfiguration`, but keep the coordinator at the scene root rather than creating one per button.
+
 ## Production governance
 
 ### Remote policy and emergency circuit breaker

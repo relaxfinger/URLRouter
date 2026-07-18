@@ -244,6 +244,73 @@ final class URLRouterTests: XCTestCase {
     }
 
     @MainActor
+    func testCoordinatorExecutesConcurrentRequestsByPriorityThenArrivalOrder() async throws {
+        let router = ModuleRouter()
+        let coordinator = ModuleRouteCoordinator(
+            router: router,
+            registry: ModuleRouteRegistry(modules: [contentModule]),
+            allowedHosts: ["example.com"],
+            configuration: ModuleRouteCoordinatorConfiguration(transitionDelay: .zero)
+        )
+
+        _ = coordinator.route(URL(string: "https://example.com/articles/background?presentation=push")!, priority: .background)
+        _ = coordinator.route(URL(string: "https://example.com/articles/tap?presentation=push")!, priority: .userInitiated)
+        _ = coordinator.route(URL(string: "https://example.com/articles/link?presentation=push")!, priority: .external)
+        _ = coordinator.route(URL(string: "https://example.com/articles/critical?presentation=push")!, priority: .critical)
+
+        await waitForCoordinatorToBecomeIdle(coordinator)
+
+        XCTAssertEqual(router.path.map { $0.parameters["id"] }, ["critical", "link", "tap", "background"])
+        XCTAssertEqual(coordinator.pendingRequestCount, 0)
+    }
+
+    @MainActor
+    func testCoordinatorMergesDuplicatesAndEvictsLowerPriorityRequestsWhenFull() async throws {
+        let router = ModuleRouter()
+        var events: [ModuleRouteEvent] = []
+        let coordinator = ModuleRouteCoordinator(
+            router: router,
+            registry: ModuleRouteRegistry(modules: [contentModule]),
+            allowedHosts: ["example.com"],
+            configuration: ModuleRouteCoordinatorConfiguration(maximumPendingRequests: 1, transitionDelay: .zero),
+            onEvent: { events.append($0) }
+        )
+        let background = URL(string: "https://example.com/articles/background?presentation=push")!
+
+        _ = coordinator.route(background, priority: .background)
+        _ = coordinator.route(background, priority: .background)
+        XCTAssertEqual(coordinator.pendingRequestCount, 1)
+        _ = coordinator.route(
+            URL(string: "https://example.com/articles/critical?presentation=push")!,
+            priority: .critical
+        )
+
+        await waitForCoordinatorToBecomeIdle(coordinator)
+
+        XCTAssertEqual(router.path.map { $0.parameters["id"] }, ["critical"])
+        XCTAssertTrue(events.contains { $0.failureCode == "queue.duplicate_merged" })
+        XCTAssertTrue(events.contains { $0.failureCode == "queue.full" })
+    }
+
+    @MainActor
+    func testCoordinatorDiscardsExpiredRequests() throws {
+        var failures: [Error] = []
+        let coordinator = ModuleRouteCoordinator(
+            router: ModuleRouter(),
+            registry: ModuleRouteRegistry(modules: [contentModule]),
+            allowedHosts: ["example.com"],
+            onFailure: { _, error in failures.append(error) }
+        )
+
+        _ = coordinator.route(
+            URL(string: "https://example.com/articles/old?presentation=push")!,
+            expiresAt: Date().addingTimeInterval(-1)
+        )
+
+        XCTAssertEqual(failures.first as? ModuleRouteCoordinatorError, .requestExpired)
+    }
+
+    @MainActor
     private var contentModule: RouteModule {
         RouteModule(id: "content") { link in
             guard link.pathComponents.count == 2, link.pathComponents[0] == "articles" else { return nil }
@@ -261,6 +328,18 @@ final class URLRouterTests: XCTestCase {
 
     private func link(_ string: String) throws -> UniversalLink {
         try UniversalLink(url: try XCTUnwrap(URL(string: string)), allowedHosts: ["example.com"])
+    }
+
+    @MainActor
+    private func waitForCoordinatorToBecomeIdle(_ coordinator: ModuleRouteCoordinator) async {
+        for _ in 0..<100 {
+            if coordinator.pendingRequestCount == 0 {
+                await Task.yield()
+                return
+            }
+            await Task.yield()
+        }
+        XCTFail("The route coordinator did not drain its queue.")
     }
 
     @MainActor
