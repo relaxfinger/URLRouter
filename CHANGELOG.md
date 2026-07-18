@@ -4,6 +4,13 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [2.4.6] - 2026-07-18
+
+### Added
+
+- Added `ModuleRouteCoordinator` for per-scene serialized route handling, exact-URL deduplication, priority ordering, bounded queues, expiration, and policy revalidation before execution.
+- Added coordinator tests and updated the demo plus English and Chinese guides with a plain-language concurrency model and integration example.
+
 ## [2.4.5] - 2026-07-18
 
 ### Added

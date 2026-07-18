@@ -264,47 +264,13 @@ public struct ModuleLinkRoutingModifier: ViewModifier {
             moduleID: presentation?.route.moduleID,
             routeID: presentation?.route.routeID,
             presentation: presentation?.presentation,
-            failureCode: failure.map(routeFailureCode),
+            failureCode: failure.map(moduleRouteFailureCode),
             failureDescription: failure?.localizedDescription
         )
         observability?.record(event)
         onEvent(event)
     }
 
-    private func routeFailureCode(_ error: Error) -> String {
-        if let error = error as? ModuleRoutePolicyError {
-            return switch error {
-            case .missingContractVersion: "policy.missing_contract_version"
-            case .unsupportedContractVersion: "policy.unsupported_contract_version"
-            case .presentationNotAllowed: "policy.presentation_not_allowed"
-            case .moduleDisabled: "policy.module_disabled"
-            case .unauthorized: "policy.unauthorized"
-            case .routingSuspended: "policy.routing_suspended"
-            }
-        }
-        if let error = error as? ModuleRouteRegistryError {
-            return switch error {
-            case .duplicateModuleID: "registry.duplicate_module_id"
-            case .routeModuleMismatch: "registry.module_mismatch"
-            case .unavailableDestination: "registry.unavailable_destination"
-            }
-        }
-        if let error = error as? UniversalLinkError {
-            return switch error {
-            case .invalidURL: "link.invalid_url"
-            case .unsupportedScheme: "link.unsupported_scheme"
-            case .untrustedHost: "link.untrusted_host"
-            case .credentialsAreNotAllowed: "link.credentials_not_allowed"
-            case .unsupportedPort: "link.unsupported_port"
-            case .fragmentIsNotAllowed: "link.fragment_not_allowed"
-            case .invalidPathEncoding: "link.invalid_path_encoding"
-            case .duplicateQueryItem: "link.duplicate_query_item"
-            case .missingQueryValue: "link.missing_query_value"
-            case .unsupportedRoute: "link.unsupported_route"
-            }
-        }
-        return "route.unknown_failure"
-    }
 }
 
 @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
@@ -332,6 +298,65 @@ public extension View {
             onEvent: onEvent
         ))
     }
+
+    @MainActor
+    /// Installs a scene-level coordinator that serializes concurrent route requests.
+    func moduleLinkRouting(coordinator: ModuleRouteCoordinator) -> some View {
+        modifier(ModuleRouteCoordinatorModifier(coordinator: coordinator))
+    }
+}
+
+@available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
+@MainActor
+private struct ModuleRouteCoordinatorModifier: ViewModifier {
+    let coordinator: ModuleRouteCoordinator
+
+    func body(content: Content) -> some View {
+        content
+            .environment(\.openURL, OpenURLAction { coordinator.route($0) })
+            .onOpenURL { _ = coordinator.route($0) }
+    }
+}
+
+func moduleRouteFailureCode(_ error: Error) -> String {
+    if let error = error as? ModuleRouteCoordinatorError {
+        return switch error {
+        case .requestExpired: "queue.request_expired"
+        case .queueFull: "queue.full"
+        }
+    }
+    if let error = error as? ModuleRoutePolicyError {
+        return switch error {
+        case .missingContractVersion: "policy.missing_contract_version"
+        case .unsupportedContractVersion: "policy.unsupported_contract_version"
+        case .presentationNotAllowed: "policy.presentation_not_allowed"
+        case .moduleDisabled: "policy.module_disabled"
+        case .unauthorized: "policy.unauthorized"
+        case .routingSuspended: "policy.routing_suspended"
+        }
+    }
+    if let error = error as? ModuleRouteRegistryError {
+        return switch error {
+        case .duplicateModuleID: "registry.duplicate_module_id"
+        case .routeModuleMismatch: "registry.module_mismatch"
+        case .unavailableDestination: "registry.unavailable_destination"
+        }
+    }
+    if let error = error as? UniversalLinkError {
+        return switch error {
+        case .invalidURL: "link.invalid_url"
+        case .unsupportedScheme: "link.unsupported_scheme"
+        case .untrustedHost: "link.untrusted_host"
+        case .credentialsAreNotAllowed: "link.credentials_not_allowed"
+        case .unsupportedPort: "link.unsupported_port"
+        case .fragmentIsNotAllowed: "link.fragment_not_allowed"
+        case .invalidPathEncoding: "link.invalid_path_encoding"
+        case .duplicateQueryItem: "link.duplicate_query_item"
+        case .missingQueryValue: "link.missing_query_value"
+        case .unsupportedRoute: "link.unsupported_route"
+        }
+    }
+    return "route.unknown_failure"
 }
 
 /// A reusable SwiftUI shell for push, sheet, and full-screen-cover routes.

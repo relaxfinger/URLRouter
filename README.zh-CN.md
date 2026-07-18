@@ -189,6 +189,47 @@ Swift 无法在运行时发现未链接的 Package。存在两个或更多 Featu
 
 注册表会拒绝重复 module ID、由错误模块返回的 route，以及没有 destination 的 push/sheet/full-screen route。`ModuleRoutePolicy` 让 App Shell 在不耦合 Feature Package 的前提下执行协议版本、Feature 开关、权限和允许的展示方式。使用 `onFailure` 记录被拒绝的 URL，使用 `onEvent` 接入隐私友好的遥测：事件包含 trace ID、处理结果和 route 元数据，不包含 query value。Router 同一时刻只保留一个模态 route：新的模态 route 会替换旧的；push 和 tab route 会先关闭当前模态展示再导航；重复 push 相同 route 是幂等的。
 
+### 多条链接同时到达时怎么办
+
+实际 App 很容易碰到：推送通知、Universal Link 和用户点击，几乎同时要求跳转。每一条都立刻执行，最后停在哪个页面就会看运气；SwiftUI 还可能在 sheet 动画尚未结束时又被要求换页面。
+
+`ModuleRouteCoordinator` 就是每个场景前面的“小排队员”。把它和 router、registry 放在一起，在根部安装它，协调器会先收集同一时刻到达的请求，合并完全相同的 URL，然后一条一条跳转。它**不是**登录管理器：是否有权限、哪条业务更重要，仍由 App 自己决定。
+
+```swift
+@State private var router: ModuleRouter
+@State private var routeCoordinator: ModuleRouteCoordinator
+
+init() {
+    let router = ModuleRouter()
+    _router = State(initialValue: router)
+    _routeCoordinator = State(initialValue: ModuleRouteCoordinator(
+        router: router,
+        registry: AppModules.registry,
+        allowedHosts: ["example.com"]
+    ))
+}
+
+var body: some Scene {
+    WindowGroup {
+        RouterHost(router: router) { AppTabs(router: router) } destination: {
+            AppModules.registry.destination(for: $0)
+        }
+        .moduleLinkRouting(coordinator: routeCoordinator)
+    }
+}
+```
+
+默认规则很直白：
+
+- 一个场景一个协调器；两个窗口互不堵塞。
+- 同一条 URL 已在等待或正在处理时，合并成一次，不会连续打开两次。
+- 优先级顺序是 `critical`、`external`、`userInitiated`、`background`；同级按到达顺序处理。
+- 最多等待 10 条。队列满时，更高优先级的新请求会挤掉最早、且优先级更低的请求；否则新请求被拒绝。
+- 默认等待超过 30 秒就过期，避免用户已经离开后又突然打开一条旧通知。
+- 入队时检查一次、真正跳转前再检查一次；所以等待期间策略或熔断开关改变，仍然会生效。
+
+App 主动发起的跳转可调用 `route(_:priority:expiresAt:)`；外部 `openURL` 和 Universal Link 默认使用 `.external`。队列的结果仍走原有可观测性：`queue.duplicate_merged`、`queue.full`、`queue.request_expired`。可通过 `ModuleRouteCoordinatorConfiguration` 调整限制，但协调器应放在场景根部，不要每个按钮各建一个。
+
 ## 生产治理
 
 ### 远程策略与紧急熔断

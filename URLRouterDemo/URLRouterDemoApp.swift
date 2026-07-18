@@ -16,9 +16,27 @@ import NavigationFeature
 @main
 /// The demo composes the same `RouterHost` API available to every supported platform.
 struct URLRouterDemoApp: App {
-    @State private var router = ModuleRouter() // One URLRouter navigation state per scene.
-    @State private var policySession = DemoPolicySession() // Owns URLRouter's local and remote route policy.
-    @State private var routeObserver = DemoRouteObserver() // Receives URLRouter route telemetry events.
+    @State private var router: ModuleRouter // One URLRouter navigation state per scene.
+    @State private var policySession: DemoPolicySession // Owns URLRouter's local and remote route policy.
+    @State private var routeObserver: DemoRouteObserver // Receives URLRouter route telemetry events.
+    @State private var routeCoordinator: ModuleRouteCoordinator // Serializes simultaneous route requests for this scene.
+
+    init() {
+        let router = ModuleRouter()
+        let policySession = DemoPolicySession()
+        let routeObserver = DemoRouteObserver()
+        _router = State(initialValue: router)
+        _policySession = State(initialValue: policySession)
+        _routeObserver = State(initialValue: routeObserver)
+        _routeCoordinator = State(initialValue: ModuleRouteCoordinator(
+            router: router,
+            registry: DemoModules.registry,
+            allowedHosts: ["example.com"],
+            policyStore: policySession.store,
+            // Forward privacy-safe queue and routing events to the demo observer.
+            observability: ModuleRouteObservability(observers: [routeObserver])
+        ))
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -34,15 +52,8 @@ struct URLRouterDemoApp: App {
                 // Ask URLRouter's registry for the Feature-owned destination view.
                 DemoModules.registry.destination(for: route)
             }
-            // Install URLRouter once at the scene root for openURL and Universal Links.
-            .moduleLinkRouting(
-                router: router,
-                registry: DemoModules.registry,
-                allowedHosts: ["example.com"],
-                policyStore: policySession.store,
-                // Send privacy-safe URLRouter events to the demo observer.
-                observability: ModuleRouteObservability(observers: [routeObserver])
-            )
+            // Install the coordinator once; it queues simultaneous openURL and Universal Link requests.
+            .moduleLinkRouting(coordinator: routeCoordinator)
             // Restore cached policy first, then refresh the demo's remote policy.
             .task { await policySession.bootstrapAndRefresh() }
         }
