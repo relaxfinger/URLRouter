@@ -124,9 +124,45 @@ final class URLRouterTests: XCTestCase {
     }
 
     @MainActor
+    func testRoutePolicyEnforcesContractAndAccessGovernance() throws {
+        let route = ModuleRoute(moduleID: "content", routeID: "detail")
+        let presentation = ResolvedModuleRoute(route: route, presentation: .push)
+        let unversioned = try link("https://example.com/articles/42?presentation=push")
+
+        let strictPolicy = ModuleRoutePolicy(
+            acceptedContractVersions: ["1"],
+            allowsUnversionedLinks: false
+        )
+        XCTAssertThrowsError(try strictPolicy.validate(unversioned, presentation: presentation)) { error in
+            XCTAssertEqual(error as? ModuleRoutePolicyError, .missingContractVersion(queryItem: "version"))
+        }
+
+        let unsupportedVersion = try link("https://example.com/articles/42?presentation=push&version=2")
+        XCTAssertThrowsError(try strictPolicy.validate(unsupportedVersion, presentation: presentation)) { error in
+            XCTAssertEqual(error as? ModuleRoutePolicyError, .unsupportedContractVersion("2"))
+        }
+
+        let disabledPolicy = ModuleRoutePolicy(isModuleEnabled: { _ in false })
+        XCTAssertThrowsError(try disabledPolicy.validate(unversioned, presentation: presentation)) { error in
+            XCTAssertEqual(error as? ModuleRoutePolicyError, .moduleDisabled("content"))
+        }
+
+        let unauthorizedPolicy = ModuleRoutePolicy(isAuthorized: { _, _ in false })
+        XCTAssertThrowsError(try unauthorizedPolicy.validate(unversioned, presentation: presentation)) { error in
+            XCTAssertEqual(
+                error as? ModuleRoutePolicyError,
+                .unauthorized(moduleID: "content", routeID: "detail")
+            )
+        }
+    }
+
+    @MainActor
     func testModuleRouterAppliesEveryPresentationStyle() {
         let router = ModuleRouter()
         let route = ModuleRoute(moduleID: "content", routeID: "article")
+
+        router.apply(ResolvedModuleRoute(route: route, presentation: .push))
+        XCTAssertEqual(router.path, [route])
 
         router.apply(ResolvedModuleRoute(route: route, presentation: .push))
         XCTAssertEqual(router.path, [route])

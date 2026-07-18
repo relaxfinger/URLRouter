@@ -99,12 +99,12 @@ public struct SignInView: View {
 
 public enum ContentLinks {
     public static func article(_ id: String) -> URL {
-        URL(string: "https://example.com/articles/\(id)?presentation=push")!
+        URL(string: "https://example.com/articles/\(id)?presentation=push&version=1")!
     }
 }
 
 public enum NavigationLinks {
-    public static let settings = URL(string: "https://example.com/settings?presentation=sheet")!
-    public static let signIn = URL(string: "https://example.com/sign-in?presentation=fullScreenCover")!
-    public static let favorites = URL(string: "https://example.com/favorites?presentation=tab")!
+    public static let settings = URL(string: "https://example.com/settings?presentation=sheet&version=1")!
+    public static let signIn = URL(string: "https://example.com/sign-in?presentation=fullScreenCover&version=1")!
+    public static let favorites = URL(string: "https://example.com/favorites?presentation=tab&version=1")!
 }

@@ -4,6 +4,18 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-07-18
+
+### Added
+
+- `ModuleRoutePolicy` for versioned URL contracts, module feature flags, authorization, and presentation governance.
+- Privacy-conscious `ModuleRouteEvent` telemetry with trace IDs and route metadata.
+
+### Changed
+
+- Made repeated push and modal requests idempotent.
+- Updated the demo and integration guides with strict contract enforcement and telemetry examples.
+
 ## [2.2.0] - 2026-07-18
 
 ### Added
