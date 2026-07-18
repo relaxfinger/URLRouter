@@ -327,6 +327,8 @@ In plain terms, route contract CI treats a URL as an interface agreement between
 
 To use it, update four things in the same PR whenever a public link changes: the Feature URL parser, `RouteContracts.json`, the README/caller examples, and any required migration notes. CI catches structural catalog mistakes; whether an old URL can be removed and how old clients migrate must still be explicit in PR review and release notes. That distinction prevents “automatic validation” from being mistaken for “automatic compatibility.”
 
+In addition, PR CI compares the catalog with the exact base commit. It rejects a removed route, changed path template, removed presentation style, removed required parameter, or removed supported contract version. This makes a public-link breaking change visible before merge; make such a change only in a major release with a migration plan.
+
 ### Public API compatibility CI
 
 In plain terms, this is the same safety net for Swift code that route-contract CI is for URLs. An app may import `URLRouter` or `URLRouterPolicyProvider` and call a public type or method for years. Removing or changing that API without a major-version migration breaks the app at its next dependency update.

@@ -13,7 +13,13 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - name: Validate route contracts
+      - name: Validate route contracts on pull requests
+        if: github.event_name == 'pull_request'
+        run: |
+          git show "${{ github.event.pull_request.base.sha }}:RouteContracts.json" > /tmp/RouteContracts.base.json
+          swift Scripts/validate_route_contract.swift RouteContracts.json --baseline /tmp/RouteContracts.base.json
+      - name: Validate route contracts on master
+        if: github.event_name != 'pull_request'
         run: swift Scripts/validate_route_contract.swift RouteContracts.json
       - name: Check public API compatibility
         if: github.event_name == 'pull_request'
