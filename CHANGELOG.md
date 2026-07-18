@@ -4,6 +4,12 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [2.4.4] - 2026-07-18
+
+### Added
+
+- PR CI now compares route contracts with the exact base commit and rejects removed routes, path changes, removed presentation styles, required parameters, or supported contract versions.
+
 ## [2.4.3] - 2026-07-18
 
 ### Added

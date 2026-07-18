@@ -15,7 +15,13 @@ struct RouteContract: Decodable {
 }
 
 let validPresentations: Set<String> = ["push", "tab", "sheet", "fullScreenCover"]
-let manifestPath = CommandLine.arguments.dropFirst().first ?? "RouteContracts.json"
+let arguments = Array(CommandLine.arguments.dropFirst())
+let manifestPath = arguments.first ?? "RouteContracts.json"
+let baselinePath: String? = {
+    guard let flagIndex = arguments.firstIndex(of: "--baseline") else { return nil }
+    let valueIndex = arguments.index(after: flagIndex)
+    return valueIndex < arguments.endIndex ? arguments[valueIndex] : nil
+}()
 
 do {
     let data = try Data(contentsOf: URL(fileURLWithPath: manifestPath))
@@ -56,6 +62,38 @@ do {
             if !invocationKeys.insert(invocationKey).inserted {
                 failures.append("Duplicate route invocation contract: \(invocationKey).")
             }
+        }
+    }
+
+    if let baselinePath {
+        let baselineData = try Data(contentsOf: URL(fileURLWithPath: baselinePath))
+        let baseline = try JSONDecoder().decode(RouteContractManifest.self, from: baselineData)
+        let currentRoutes = Dictionary(uniqueKeysWithValues: manifest.routes.map {
+            ("\($0.moduleID)/\($0.routeID)", $0)
+        })
+
+        for baselineRoute in baseline.routes {
+            let key = "\(baselineRoute.moduleID)/\(baselineRoute.routeID)"
+            guard let currentRoute = currentRoutes[key] else {
+                failures.append("Breaking route contract: removed \(key).")
+                continue
+            }
+            guard baselineRoute.pathTemplate == currentRoute.pathTemplate else {
+                failures.append("Breaking route contract: changed pathTemplate for \(key).")
+                continue
+            }
+            guard Set(baselineRoute.presentations).isSubset(of: Set(currentRoute.presentations)) else {
+                failures.append("Breaking route contract: removed presentation for \(key).")
+                continue
+            }
+            if !Set(baselineRoute.requiredQueryItems).isSubset(of: Set(currentRoute.requiredQueryItems)) {
+                failures.append("Breaking route contract: removed required query item for \(key).")
+            }
+        }
+
+        let removedVersions = Set(baseline.supportedVersions).subtracting(manifest.supportedVersions)
+        for version in removedVersions.sorted() {
+            failures.append("Breaking route contract: removed supported version \(version).")
         }
     }
 
