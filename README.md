@@ -407,3 +407,9 @@ swift Scripts/validate_route_contract.swift RouteContracts.json
 ## License
 
 URLRouter is released under the [MIT License](LICENSE).
+
+## Community and maintenance
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for pull requests, [SUPPORT.md](SUPPORT.md)
+for support channels, [SECURITY.md](SECURITY.md) for responsible disclosure, and
+[MAINTENANCE.md](MAINTENANCE.md) for supported-release and compatibility policy.

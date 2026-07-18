@@ -4,6 +4,12 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [2.4.5] - 2026-07-18
+
+### Added
+
+- Added support, maintenance, and architecture-decision policies; CODEOWNERS; and weekly Dependabot updates for GitHub Actions and Swift dependencies.
+
 ## [2.4.4] - 2026-07-18
 
 ### Added
