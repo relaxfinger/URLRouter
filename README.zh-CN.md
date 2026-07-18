@@ -398,3 +398,9 @@ swift Scripts/validate_route_contract.swift RouteContracts.json
 ## 许可证
 
 URLRouter 使用 [MIT License](LICENSE) 发布。
+
+## 社区与维护
+
+提交 PR 请阅读 [CONTRIBUTING.md](CONTRIBUTING.md)，支持渠道见
+[SUPPORT.md](SUPPORT.md)，安全漏洞请遵循 [SECURITY.md](SECURITY.md)，支持版本与
+兼容性策略见 [MAINTENANCE.md](MAINTENANCE.md)。

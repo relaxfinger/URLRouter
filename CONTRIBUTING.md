@@ -14,6 +14,10 @@ Run all checks before opening a pull request:
 
 ```bash
 swift test
+swift Scripts/validate_route_contract.swift RouteContracts.json
+swift package diagnose-api-breaking-changes origin/master \
+  --products URLRouter \
+  --products URLRouterPolicyProvider
 swift build --package-path Features/NavigationFeature
 swift build --package-path Features/ContentFeature
 xcodebuild build \
@@ -37,6 +41,8 @@ xcodebuild build \
 - Keep each pull request focused on one concern.
 - Add or update tests for observable behavior changes.
 - Update both README languages when a public API or integration workflow changes.
+- Read [MAINTENANCE.md](MAINTENANCE.md) before proposing a compatibility-sensitive change.
+- Add an ADR under `docs/adr/` for a material public-boundary, route-compatibility, security, or long-term maintenance decision.
 - Use concise, imperative commit messages, for example: `Add route registry collision test`.
 - Wait for the required CI checks and maintainer approval before merging.
 - Maintainers use squash merge so each pull request becomes one focused commit on `master`.
