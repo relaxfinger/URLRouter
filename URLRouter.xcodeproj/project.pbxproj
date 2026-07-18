@@ -195,6 +195,7 @@
 			name = URLRouterDemo;
 			packageProductDependencies = (
 				D3A000000000000000000020 /* URLRouter */,
+				D3A000000000000000000022 /* URLRouterPolicyProvider */,
 				D3A000000000000000000016 /* ContentFeature */,
 				D3A000000000000000000017 /* NavigationFeature */,
 			);
@@ -652,6 +653,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = D3A000000000000000000021 /* XCLocalSwiftPackageReference "." */;
 			productName = URLRouter;
+		};
+		D3A000000000000000000022 /* URLRouterPolicyProvider */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D3A000000000000000000021 /* XCLocalSwiftPackageReference "." */;
+			productName = URLRouterPolicyProvider;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

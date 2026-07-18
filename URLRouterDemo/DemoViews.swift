@@ -14,15 +14,18 @@ struct DemoTabs: View {
     @Bindable private var router: ModuleRouter
     @Bindable private var policyStore: ModuleRoutePolicyStore
     private let latestRouteEvent: ModuleRouteEvent?
+    private let policyStatus: String
 
     init(
         router: ModuleRouter,
         policyStore: ModuleRoutePolicyStore,
-        latestRouteEvent: ModuleRouteEvent?
+        latestRouteEvent: ModuleRouteEvent?,
+        policyStatus: String
     ) {
         self.router = router
         self.policyStore = policyStore
         self.latestRouteEvent = latestRouteEvent
+        self.policyStatus = policyStatus
     }
 
     var body: some View {
@@ -40,6 +43,9 @@ struct DemoTabs: View {
                 Toggle("Routing enabled", isOn: routingEnabled)
                     .font(.caption)
                     .padding(.horizontal)
+                Text(policyStatus)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
                 if let latestRouteEvent {
                     Label(
                         "Route \(latestRouteEvent.outcome.rawValue) · \(latestRouteEvent.failureCode ?? "success") · trace \(latestRouteEvent.traceID.uuidString.prefix(8))",

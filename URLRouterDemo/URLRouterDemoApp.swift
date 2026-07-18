@@ -9,6 +9,7 @@
 import SwiftUI
 import Observation
 import URLRouter
+import URLRouterPolicyProvider
 import ContentFeature
 import NavigationFeature
 
@@ -16,7 +17,7 @@ import NavigationFeature
 /// The demo composes the same `RouterHost` API available to every supported platform.
 struct URLRouterDemoApp: App {
     @State private var router = ModuleRouter()
-    @State private var policyStore = DemoModules.makePolicyStore()
+    @State private var policySession = DemoPolicySession()
     @State private var routeObserver = DemoRouteObserver()
 
     var body: some Scene {
@@ -24,8 +25,9 @@ struct URLRouterDemoApp: App {
             RouterHost(router: router) {
                 DemoTabs(
                     router: router,
-                    policyStore: policyStore,
-                    latestRouteEvent: routeObserver.latestEvent
+                    policyStore: policySession.store,
+                    latestRouteEvent: routeObserver.latestEvent,
+                    policyStatus: policySession.status
                 )
             } destination: { route in
                 DemoModules.registry.destination(for: route)
@@ -34,9 +36,10 @@ struct URLRouterDemoApp: App {
                 router: router,
                 registry: DemoModules.registry,
                 allowedHosts: ["example.com"],
-                policyStore: policyStore,
+                policyStore: policySession.store,
                 observability: ModuleRouteObservability(observers: [routeObserver])
             )
+            .task { await policySession.bootstrapAndRefresh() }
         }
     }
 
@@ -56,6 +59,35 @@ enum DemoModules {
             ),
             remotePolicy: ModuleRouteRemotePolicy()
         )
+    }
+}
+
+@MainActor
+@Observable
+final class DemoPolicySession {
+    let store = DemoModules.makePolicyStore()
+    private let provider: RoutePolicyProvider
+    private(set) var status = "Using local policy"
+
+    init() {
+        provider = RoutePolicyProvider(
+            store: store,
+            source: DemoPolicySource(),
+            cache: InMemoryRoutePolicyCache(),
+            strategy: .standard
+        )
+    }
+
+    func bootstrapAndRefresh() async {
+        let bootstrap = await provider.bootstrap()
+        let refresh = await provider.refresh()
+        status = "Policy \(bootstrap) · \(refresh)"
+    }
+}
+
+private struct DemoPolicySource: RoutePolicyRemoteSource {
+    func fetchPolicyData() async throws -> Data {
+        try JSONEncoder().encode(ModuleRouteRemotePolicy())
     }
 }
 

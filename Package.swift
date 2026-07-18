@@ -16,6 +16,10 @@ let package = Package(
         .library(
             name: "URLRouter",
             targets: ["URLRouter"]
+        ),
+        .library(
+            name: "URLRouterPolicyProvider",
+            targets: ["URLRouterPolicyProvider"]
         )
     ],
     dependencies: [],
@@ -24,9 +28,17 @@ let package = Package(
             name: "URLRouter",
             dependencies: []
         ),
+        .target(
+            name: "URLRouterPolicyProvider",
+            dependencies: ["URLRouter"]
+        ),
         .testTarget(
             name: "URLRouterTests",
             dependencies: ["URLRouter"]
+        ),
+        .testTarget(
+            name: "URLRouterPolicyProviderTests",
+            dependencies: ["URLRouterPolicyProvider"]
         )
     ],
     swiftLanguageModes: [.v6]

@@ -33,7 +33,9 @@ URLRouter 是面向模块化 App 的 SwiftUI 路由基础库。Feature 页面统
 
 ```text
 Sources/URLRouter/        # 公共库源码
+Sources/URLRouterPolicyProvider/ # 可选的缓存优先策略刷新模块
 Tests/URLRouterTests/     # 单元测试
+Tests/URLRouterPolicyProviderTests/ # Provider 单元测试
 Features/                 # 本地 Feature Package 示例
 URLRouterDemo/            # SwiftUI Demo 应用
 ```
@@ -193,6 +195,14 @@ Swift 无法在运行时发现未链接的 Package。存在两个或更多 Featu
 
 `ModuleRouteRemotePolicy` 是可 `Codable` 解码的限制文档，App Shell 可从任意已批准的远程配置服务获取。库本身不访问网络：宿主 App 必须负责鉴权、验签、缓存和回滚。远程策略只能收紧本地策略，不能越过本地授权。
 
+需要“先读缓存、后台刷新”的 App 生命周期时，可从同一个 Package 按需引入：
+
+```swift
+.product(name: "URLRouterPolicyProvider", package: "URLRouter")
+```
+
+`URLRouterPolicyProvider` 依赖 `URLRouter`，反过来核心库不依赖它。它不绑定 HTTP 客户端、远程配置厂商或签名方案；App 只实现这些小适配层，Provider 负责缓存优先启动、TTL、旧缓存回退和策略原子替换。
+
 ```swift
 @State private var routePolicyStore = ModuleRoutePolicyStore(
     localPolicy: ModuleRoutePolicy(
@@ -208,6 +218,55 @@ func applyTrustedRemotePolicy(_ data: Data) throws {
 ```
 
 将 `isCircuitBreakerOpen` 设为 `true`，即可不发版立即停止模块路由。该文档还可禁用指定模块、提供允许列表、拒绝某些展示方式或进一步收紧支持的协议版本。
+
+### 推荐的 App 拉取策略
+
+建议顺序是：启动先读取上一次已验证缓存，再在后台刷新；App 回到前台且超过 TTL 时按需刷新；短暂断网时继续使用最后一次可信策略。没有可信缓存，或缓存超过硬过期时间时，URLRouter 保持 App 内置的安全本地策略。
+
+```swift
+import URLRouter
+import URLRouterPolicyProvider
+
+struct CompanyPolicySource: RoutePolicyRemoteSource {
+    func fetchPolicyData() async throws -> Data {
+        let url = URL(string: "https://config.example.com/mobile/route-policy")!
+        let (data, response) = try await URLSession.shared.data(from: url)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+        return data
+    }
+}
+
+@MainActor
+final class AppRoutePolicySession {
+    let store = ModuleRoutePolicyStore(localPolicy: ModuleRoutePolicy(
+        acceptedContractVersions: ["1"],
+        allowsUnversionedLinks: false
+    ))
+    let provider: RoutePolicyProvider
+
+    init(cacheURL: URL) {
+        provider = RoutePolicyProvider(
+            store: store,
+            source: CompanyPolicySource(),
+            cache: FileRoutePolicyCache(url: cacheURL),
+            strategy: .standard // 30 分钟刷新，1 小时常规缓存，24 小时硬过期
+        )
+    }
+
+    func start() async {
+        _ = await provider.bootstrap() // 先使用可信磁盘缓存；不等待网络
+        _ = await provider.refresh()   // 在后台请求最新策略
+    }
+
+    func appBecameActive() async {
+        _ = await provider.refreshIfNeeded()
+    }
+}
+```
+
+普通可信 JSON 接口可使用 `JSONRoutePolicyPayloadValidator`。如果响应有签名或信封结构，App 实现 `RoutePolicyPayloadValidating`；只有校验通过的 `ModuleRouteRemotePolicy` 才会写入缓存和生效。普通策略建议前台 30 分钟刷新、常规缓存 1 小时、硬过期 24 小时；对事故熔断，可按实际要求使用更短刷新间隔或静默推送触发刷新。
 
 ### 统一可观测性
 
@@ -275,7 +334,7 @@ Features/
 
 这是刻意设计的边界：跨 Feature 跳转应使用 URL 协议，不应为了访问对方 View 或路由类型而直接导入另一个 Feature Package。
 
-`URLRouterDemo` 是 iOS 17+ 的参考应用，演示了跨平台的 `RouterHost` 组合方式、四种 URL 展示方式、跨 Package 跳转、严格的 version=1 协议校验、应用内路由遥测状态和远程策略紧急熔断开关。面向 macOS 14+、tvOS 17+ 或 watchOS 10+ 的 App 同样可使用 `RouterHost`、`moduleLinkRouting` 与 Feature Package；SwiftUI 会按平台适配导航和模态展示。由于 SwiftUI 在 macOS 上不提供 `fullScreenCover`，该展示方式会在 macOS 中以 sheet 呈现。
+`URLRouterDemo` 是 iOS 17+ 的参考应用，演示了跨平台的 `RouterHost` 组合方式、四种 URL 展示方式、跨 Package 跳转、严格的 version=1 协议校验、应用内路由遥测状态，以及可选 `URLRouterPolicyProvider` 的缓存优先刷新流程。Demo 的 `DemoPolicySource` 故意使用本地数据；生产环境请替换为 App 自己的来源。面向 macOS 14+、tvOS 17+ 或 watchOS 10+ 的 App 同样可使用 `RouterHost`、`moduleLinkRouting` 与 Feature Package；SwiftUI 会按平台适配导航和模态展示。由于 SwiftUI 在 macOS 上不提供 `fullScreenCover`，该展示方式会在 macOS 中以 sheet 呈现。
 
 打开 `URLRouter.xcodeproj`，选择 **URLRouterDemo** scheme 与 iOS 17+ simulator 后运行，Xcode 会自动解析两个本地 Package。
 
