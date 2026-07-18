@@ -4,6 +4,19 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-07-18
+
+### Added
+
+- Registry validation for duplicate module IDs, cross-module route ownership, and missing destinations.
+- `onFailure` callbacks for route configuration and URL-contract failures.
+
+### Changed
+
+- Made modal routing deterministic: one modal route is active at a time, and push/tab navigation dismisses it.
+- Expanded URL validation and registry-state test coverage.
+- Updated CI to use the current GitHub checkout action runtime.
+
 ## [2.1.0] - 2026-07-18
 
 ### Added
