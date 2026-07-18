@@ -11,8 +11,17 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - name: Validate route contracts
         run: swift Scripts/validate_route_contract.swift RouteContracts.json
+      - name: Check public API compatibility
+        if: github.event_name == 'pull_request'
+        run: >-
+          swift package diagnose-api-breaking-changes
+          "${{ github.event.pull_request.base.sha }}"
+          --products URLRouter
+          --products URLRouterPolicyProvider
       - name: Test URLRouter
         run: swift test
       - name: Build URLRouter for tvOS

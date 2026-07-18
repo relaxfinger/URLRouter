@@ -318,6 +318,12 @@ let observability = ModuleRouteObservability(observers: [AppRouteObserver()])
 
 怎么用：新增或修改公开链接时，按同一个 PR 同步修改四处：Feature 的 URL 解析器、`RouteContracts.json`、README/调用方示例、以及必要的迁移说明。CI 擅长阻止目录本身的结构错误；是否可以删除旧链接、旧版本如何迁移，则仍应在 PR 审查和发布说明中明确，这是为了避免把“自动检查”误当成“自动兼容”。
 
+### 公开 API 兼容性 CI
+
+先用人话说：这就是给 Swift 代码准备的“接口不被偷偷改坏”检查，作用和路由契约 CI 对 URL 的保护一样。App 可能长期导入 `URLRouter` 或 `URLRouterPolicyProvider`，并调用某个公开类型或方法；如果库在小版本升级中删除或改掉它，App 下次升级依赖时就会编译失败。
+
+每个 PR 的 CI 都会使用 SwiftPM 自带的 API 对比工具，把两个公开库产品与该 PR 的精确基线提交比较。它会在合并前拒绝删除公开类型、修改函数签名等破坏性改动；只新增 API 则可以正常通过。确实需要破坏 API 时，应发布主版本并提供明确迁移说明，而不是为了合并小版本或补丁版本而绕过这道检查。
+
 ## 常见路由场景
 
 | 业务意图 | Feature 代码 |
