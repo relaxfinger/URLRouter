@@ -1,447 +1,193 @@
 # URLRouter
 
-[🇺🇸 English](README.md)
+[🇺🇸 English](README.md) · [文档目录](docs/README.md) · [完整入门博客](https://zhangjipeng.com/post-urlrouter.html)
 
-> iOS 17+ · macOS 14+ · tvOS 17+ · watchOS 10+ · Swift 6 · SwiftUI · 模块化 `openURL` 路由
+> 面向模块化 Apple 平台 App 的 SwiftUI 路由基础设施。
+>
+> iOS 17+ · macOS 14+ · tvOS 17+ · watchOS 10+ · Swift 6
 
-URLRouter 是面向模块化 App 的 SwiftUI 路由基础库。Feature 页面统一使用 `openURL` 跳转；URLRouter 负责校验 URL、找到所属 Feature Package，并执行 URL 中声明的展示方式。
+URLRouter 给 App 提供一个统一、可预期的跳转入口。按钮、推送通知、
+Universal Link 或另一个 Feature，都可以提交同一条 HTTPS URL；URLRouter
+会校验 URL、交给拥有它的 Feature 解析，并按 URL 声明的方式更新 SwiftUI
+导航。
 
-## 目录
+当 App 页面变多后，调用方无需再知道另一个 Feature 的 View 类型、初始化
+参数或导航容器；它只使用该 Feature 已文档化的 URL 契约。这正是它在真实
+模块化项目中的价值。
 
-1. [安装](#安装)
-2. [架构](#架构)
-3. [配置 Universal Link](#配置-universal-link)
-4. [Feature Package](#feature-package)
-5. [App Shell](#app-shell)
-6. [生产治理](#生产治理)
-7. [常见路由场景](#常见路由场景)
-8. [Demo 与测试](#demo-与测试)
+## 按你的目标开始
+
+| 你想做什么 | 从这里开始 |
+| --- | --- |
+| 从一个 SwiftUI 按钮打开页面 | [5 分钟快速开始](docs/getting-started.zh-CN.md#5-分钟快速开始) |
+| 接入 Universal Link 和模块化 Feature Package | [接入指南](docs/getting-started.zh-CN.md) |
+| 理解模块边界和 URL 契约 | [架构说明](docs/architecture.zh-CN.md) |
+| 接入远程开关、并发协调、埋点或 CI | [生产治理](docs/production-governance.zh-CN.md) |
+| 跟着从头实践一遍 | [技术博客](https://zhangjipeng.com/post-urlrouter.html) |
+
+README 故意保持简短。链接文档会解释为什么这样设计、生产环境如何接入，并
+提供中文内容；你不需要在第一天就引入所有高级能力。
 
 ## 安装
 
-在 Xcode 的 **File > Add Package Dependencies…** 添加 `https://github.com/relaxfinger/URLRouter.git`，随后导入 `URLRouter`。最低支持 iOS 17、macOS 14、tvOS 17 或 watchOS 10。
-
-### 兼容性
-
-- Apple 2023 年同代系统：iOS 17+、macOS 14+、tvOS 17+ 与 watchOS 10+
-- Swift 6 语言模式
-- Xcode 16 或更高版本
-
-### 包结构
-
-仓库遵循 Swift Package Manager 的标准目录约定。库与测试可直接由 SwiftPM 构建；Xcode 工程仅作为可运行的 Demo 宿主。
+在 Xcode 选择 **File → Add Package Dependencies…**，添加：
 
 ```text
-Sources/URLRouter/        # 公共库源码
-Sources/URLRouterPolicyProvider/ # 可选的缓存优先策略刷新模块
-Tests/URLRouterTests/     # 单元测试
-Tests/URLRouterPolicyProviderTests/ # Provider 单元测试
-Features/                 # 本地 Feature Package 示例
-URLRouterDemo/            # SwiftUI Demo 应用
+https://github.com/relaxfinger/URLRouter.git
 ```
 
-## 架构
+将 `URLRouter` 添加到 App Target，以及每一个声明 `RouteModule` 的 Feature
+Package。
 
-URLRouter 让 Feature 页面统一通过 `openURL` 跳转。App Shell 一次性注册各 Feature Package 后，使用完整 HTTPS URL 并携带必填 `presentation` query 即可。合法值为 `push`、`tab`、`sheet`、`fullScreenCover`。生产环境的 App Shell 还可通过 `ModuleRoutePolicy` 强制执行版本化 URL 协议，通过 `ModuleRoutePolicyStore` 接入远程限制，并通过 `ModuleRouteObservability` 输出供应商无关的遥测事件。
-
-```text
-https://example.com/articles/42?presentation=push&version=1
-https://example.com/favorites?presentation=tab&version=1
-https://example.com/settings?presentation=sheet&version=1
-https://example.com/sign-in?presentation=fullScreenCover&version=1
+```swift
+dependencies: [
+    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.4.7")
+]
 ```
 
+`URLRouterPolicyProvider` 是同一个 Package 的可选 product。只有 App 需要
+“先读缓存、后台刷新”的远程路由策略时才引入它；通常 Feature Package 只依赖
+`URLRouter`。
 
-## 配置 Universal Link
-
-1. 在 target 添加 **Associated Domains** capability，并添加 `applinks:example.com`。
-2. 通过 HTTPS 且不重定向地部署 `https://example.com/.well-known/apple-app-site-association`。
-3. 只在 `WindowGroup` 根部安装一次 `moduleLinkRouting`。
-
-AASA 示例（替换团队 ID 与 bundle ID）：
-
-```json
-{
-  "applinks": {
-    "details": [{
-      "appIDs": ["TEAM_ID.com.example.MyApp"],
-      "components": [{ "/": "/articles/*" }, { "/": "/settings" }]
-    }]
-  }
-}
+```swift
+.product(name: "URLRouter", package: "URLRouter")
+// 仅 App 壳层在需要远程策略时添加：
+.product(name: "URLRouterPolicyProvider", package: "URLRouter")
 ```
 
-## Feature Package
+## 5 分钟快速开始
 
-每个 Feature Package 注册自己的 URL 语法与目标 View；只有这一层知道自己的路径和页面。
+### 1. 由 Feature 负责自己的路径和目标页面
 
 ```swift
 import SwiftUI
 import URLRouter
 
 enum ArticleFeature {
-    static let id = "articles"
-
     static let module = RouteModule(
-        id: id,
+        id: "articles",
         resolve: { link in
-            switch link.pathComponents {
-            case ["articles", let articleID]:
-                return ModuleRoute(
-                    moduleID: id,
-                    routeID: "detail",
-                    parameters: ["id": articleID]
-                )
-            case ["articles", let articleID, "comments"]:
-                return ModuleRoute(
-                    moduleID: id,
-                    routeID: "comments",
-                    parameters: ["id": articleID]
-                )
-            case ["articles", "search"]:
-                return ModuleRoute(moduleID: id, routeID: "search")
-            default:
+            guard case ["articles", let id] = link.pathComponents, !id.isEmpty else {
                 return nil
             }
+            return ModuleRoute(
+                moduleID: "articles",
+                routeID: "detail",
+                parameters: ["id": id]
+            )
         },
         destination: { route in
-            switch route.routeID {
-            case "detail":
-                return AnyView(ArticleView(id: route.parameters["id"] ?? ""))
-            case "comments":
-                return AnyView(CommentsView(articleID: route.parameters["id"] ?? ""))
-            case "search":
-                return AnyView(ArticleSearchView())
-            default:
+            guard route.routeID == "detail", let id = route.parameters["id"] else {
                 return nil
             }
+            return AnyView(ArticleDetailView(articleID: id))
         }
     )
 }
 ```
 
-普通 Feature 页面只需要 SwiftUI：
+`resolve` 返回 `nil` 的意思就是“这条 URL 不归我”。一个 Feature 可以拥有多条
+URL；把它们的解析和目标页面创建放在一起。
+
+### 2. 在场景根部只注册一次 Feature 模块
 
 ```swift
-struct ArticleList: View {
-    @Environment(\.openURL) private var openURL
+import SwiftUI
+import URLRouter
 
-    var body: some View {
-        Button("打开文章 42") {
-            openURL(URL(string: "https://example.com/articles/42?presentation=push&version=1")!)
-        }
-    }
-}
-```
-
-因此，一个 `RouteModule` 可以负责多个 link。以上 Feature 对外声明了以下 URL 协议：
-
-```text
-https://example.com/articles/42?presentation=push&version=1
-https://example.com/articles/42/comments?presentation=sheet&version=1
-https://example.com/articles/search?presentation=tab&version=1
-```
-
-路径决定 `routeID` 和参数；`presentation` 决定 SwiftUI 如何展示已解析的页面。
-
-## App Shell
-
-App 只链接 Feature Package 并一次性注册模块；它不解析 Feature 路径，也不选择 push/tab/sheet/全屏展示方式。
-
-```swift
 @main
-struct MyApp: App {
+struct CompanyApp: App {
     @State private var router = ModuleRouter()
-    private let routePolicy = ModuleRoutePolicy(
-        acceptedContractVersions: ["1"],
-        allowsUnversionedLinks: false
-    )
-    private let registry = ModuleRouteRegistry(modules: [
-        ArticleFeature.module,
-        SettingsFeature.module
-    ])
+
+    private let registry = ModuleRouteRegistry(modules: [ArticleFeature.module])
 
     var body: some Scene {
         WindowGroup {
             RouterHost(router: router) {
-                AppTabs(router: router)
+                ContentView()
             } destination: { route in
                 registry.destination(for: route)
             }
             .moduleLinkRouting(
                 router: router,
                 registry: registry,
-                allowedHosts: ["example.com"],
-                policy: routePolicy,
-                onFailure: { url, error in
-                    print("Discarded route \(url.absoluteString): \(error.localizedDescription)")
-                },
-                onEvent: { event in
-                    print("Route trace \(event.traceID): \(event.outcome.rawValue)")
-                }
+                allowedHosts: ["example.com"]
             )
         }
     }
 }
 ```
 
-Swift 无法在运行时发现未链接的 Package。存在两个或更多 Feature Package 时，App Shell 只需将每个 Package 唯一的 `RouteModule` 放入同一个注册表。新增 Feature 时仍要链接其 Package 并注册该模块，但永远不需要改中心化 URL `switch`、路径解析或展示方式映射。
+每个场景只安装一次 `RouterHost` 与 `moduleLinkRouting`。每个窗口使用一个
+`ModuleRouter`，多窗口之间的导航状态就不会互相影响。
 
-注册表会拒绝重复 module ID、由错误模块返回的 route，以及没有 destination 的 push/sheet/full-screen route。`ModuleRoutePolicy` 让 App Shell 在不耦合 Feature Package 的前提下执行协议版本、Feature 开关、权限和允许的展示方式。使用 `onFailure` 记录被拒绝的 URL，使用 `onEvent` 接入隐私友好的遥测：事件包含 trace ID、处理结果和 route 元数据，不包含 query value。Router 同一时刻只保留一个模态 route：新的模态 route 会替换旧的；push 和 tab route 会先关闭当前模态展示再导航；重复 push 相同 route 是幂等的。
-
-### 多条链接同时到达时怎么办
-
-实际 App 很容易碰到：推送通知、Universal Link 和用户点击，几乎同时要求跳转。每一条都立刻执行，最后停在哪个页面就会看运气；SwiftUI 还可能在 sheet 动画尚未结束时又被要求换页面。
-
-`ModuleRouteCoordinator` 就是每个场景前面的“小排队员”。把它和 router、registry 放在一起，在根部安装它，协调器会先收集同一时刻到达的请求，合并完全相同的 URL，然后一条一条跳转。它**不是**登录管理器：是否有权限、哪条业务更重要，仍由 App 自己决定。
+### 3. 用标准 SwiftUI API 跳转
 
 ```swift
-@State private var router: ModuleRouter
-@State private var routeCoordinator: ModuleRouteCoordinator
+struct ArticleRow: View {
+    @Environment(\.openURL) private var openURL
+    let articleID: String
 
-init() {
-    let router = ModuleRouter()
-    _router = State(initialValue: router)
-    _routeCoordinator = State(initialValue: ModuleRouteCoordinator(
-        router: router,
-        registry: AppModules.registry,
-        allowedHosts: ["example.com"]
-    ))
-}
-
-var body: some Scene {
-    WindowGroup {
-        RouterHost(router: router) { AppTabs(router: router) } destination: {
-            AppModules.registry.destination(for: $0)
+    var body: some View {
+        Button("阅读文章") {
+            openURL(URL(string: "https://example.com/articles/\(articleID)?presentation=push&version=1")!)
         }
-        .moduleLinkRouting(coordinator: routeCoordinator)
     }
 }
 ```
 
-默认规则很直白：
-
-- 一个场景一个协调器；两个窗口互不堵塞。
-- 同一条 URL 已在等待或正在处理时，合并成一次，不会连续打开两次。
-- 优先级顺序是 `critical`、`external`、`userInitiated`、`background`；同级按到达顺序处理。
-- 最多等待 10 条。队列满时，更高优先级的新请求会挤掉最早、且优先级更低的请求；否则新请求被拒绝。
-- 默认等待超过 30 秒就过期，避免用户已经离开后又突然打开一条旧通知。
-- 入队时检查一次、真正跳转前再检查一次；所以等待期间策略或熔断开关改变，仍然会生效。
-
-App 主动发起的跳转可调用 `route(_:priority:expiresAt:)`；外部 `openURL` 和 Universal Link 默认使用 `.external`。队列的结果仍走原有可观测性：`queue.duplicate_merged`、`queue.full`、`queue.request_expired`。可通过 `ModuleRouteCoordinatorConfiguration` 调整限制，但协调器应放在场景根部，不要每个按钮各建一个。
-
-## 生产治理
-
-### 远程策略与紧急熔断
-
-先用人话说：远程策略就是后台随时能改的“路由开关表”。它解决的是“某个页面或功能出了事故，不能等 App Store 审核再修”的问题。例如文章模块有严重故障时，后台把 `content` 放进禁用列表；用户下一次打开文章链接时，App 会安全地拒绝跳转。若所有路由都存在风险，把 `isCircuitBreakerOpen` 设为 `true`，就像拉下总闸：所有模块路由立即停止，但 App 其他功能不受影响。
-
-后台下发的是一份普通 JSON，大意可以是：
-
-```json
-{
-  "isCircuitBreakerOpen": false,
-  "disabledModuleIDs": ["content"],
-  "allowedPresentationStyles": ["push", "tab"],
-  "acceptedContractVersions": ["1"]
-}
-```
-
-`ModuleRouteRemotePolicy` 负责把这份 JSON 表示为 Swift 数据。URLRouter 不会自己联网：宿主 App 负责从公司接口、Firebase 或其他配置服务获取数据，并负责鉴权、验签、缓存和回滚。远程策略只能**收紧**本地规则，不能绕过本地授权或放宽本地禁止的版本；因此即使远程配置异常，也不能把一个本来不应打开的路由放行。
-
-需要“先读缓存、后台刷新”的 App 生命周期时，可从同一个 Package 按需引入：
-
-```swift
-.product(name: "URLRouterPolicyProvider", package: "URLRouter")
-```
-
-`URLRouterPolicyProvider` 依赖 `URLRouter`，反过来核心库不依赖它。它不绑定 HTTP 客户端、远程配置厂商或签名方案；App 只实现“去哪里拿数据”和“如何验签”这两小部分，Provider 负责下面这套容易出错的流程：
+URL 就是公开契约：
 
 ```text
-启动 App
-  → 先读取上一次已验证的本地缓存，马上可用
-  → 后台请求最新配置，不阻塞首屏
-  → 验签、解析、检查通过后一次性替换当前策略
-  → 保存新的可信缓存
-  → 请求失败时继续使用旧缓存；旧缓存太久则回退到 App 内置安全规则
+https://example.com/articles/42?presentation=push&version=1
 ```
 
-```swift
-@State private var routePolicyStore = ModuleRoutePolicyStore(
-    localPolicy: ModuleRoutePolicy(
-        acceptedContractVersions: ["1"],
-        allowsUnversionedLinks: false
-    )
-)
+`presentation` 必填，可取 `push`、`tab`、`sheet` 或 `fullScreenCover`。
+先跑通这一条路由，再阅读[接入指南](docs/getting-started.zh-CN.md)，安全地加入
+URL builder、Universal Link、Tab 和带版本的路由协议。
 
-func applyTrustedRemotePolicy(_ data: Data) throws {
-    let remotePolicy = try JSONDecoder().decode(ModuleRouteRemotePolicy.self, from: data)
-    routePolicyStore.replaceRemotePolicy(with: remotePolicy)
-}
-```
+## 什么时候再加可选的生产能力
 
-怎么用：App 创建一个 `ModuleRoutePolicyStore` 并交给 `moduleLinkRouting`；随后只需要在拿到并验证新配置时调用 `replaceRemotePolicy`。下一次路由自动使用新规则，不需要重建界面或重新发版。将 `isCircuitBreakerOpen` 设为 `true`，即可不发版立即停止模块路由。该文档还可禁用指定模块、提供允许列表、拒绝某些展示方式或进一步收紧支持的协议版本。
+不需要一次性全做完。
 
-### 推荐的 App 拉取策略
-
-推荐策略不是“每次点链接都请求后台”，那样既慢又不可靠。建议顺序是：启动先读取上一次已验证缓存，再在后台刷新；App 回到前台且超过 TTL 时按需刷新；短暂断网时继续使用最后一次可信策略。没有可信缓存，或缓存超过硬过期时间时，URLRouter 保持 App 内置的安全本地策略。默认值是：前台 30 分钟刷新一次、普通缓存 1 小时、最多使用 24 小时的旧可信缓存；熔断要求更高的业务可缩短 TTL 或由静默推送触发立即刷新。
-
-```swift
-import URLRouter
-import URLRouterPolicyProvider
-
-struct CompanyPolicySource: RoutePolicyRemoteSource {
-    func fetchPolicyData() async throws -> Data {
-        let url = URL(string: "https://config.example.com/mobile/route-policy")!
-        let (data, response) = try await URLSession.shared.data(from: url)
-        guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-            throw URLError(.badServerResponse)
-        }
-        return data
-    }
-}
-
-@MainActor
-final class AppRoutePolicySession {
-    let store = ModuleRoutePolicyStore(localPolicy: ModuleRoutePolicy(
-        acceptedContractVersions: ["1"],
-        allowsUnversionedLinks: false
-    ))
-    let provider: RoutePolicyProvider
-
-    init(cacheURL: URL) {
-        provider = RoutePolicyProvider(
-            store: store,
-            source: CompanyPolicySource(),
-            cache: FileRoutePolicyCache(url: cacheURL),
-            strategy: .standard // 30 分钟刷新，1 小时常规缓存，24 小时硬过期
-        )
-    }
-
-    func start() async {
-        _ = await provider.bootstrap() // 先使用可信磁盘缓存；不等待网络
-        _ = await provider.refresh()   // 在后台请求最新策略
-    }
-
-    func appBecameActive() async {
-        _ = await provider.refreshIfNeeded()
-    }
-}
-```
-
-普通可信 JSON 接口可使用 `JSONRoutePolicyPayloadValidator`。如果响应有签名或信封结构，App 实现 `RoutePolicyPayloadValidating`；只有校验通过的 `ModuleRouteRemotePolicy` 才会写入缓存和生效。这样即使网络被劫持、返回了损坏 JSON，当前正在使用的策略也不会被半成品覆盖。
-
-### 统一可观测性
-
-先用人话说：统一可观测性就是给路由装“行车记录仪”。当用户说“点订单链接没反应”时，团队不需要猜；可以看到这次路由是成功、被熔断、版本不支持、模块关闭，还是 URL 本身不合法。它还能让监控系统在“某个失败原因突然暴增”时报警。
-
-怎么用：写一个很薄的适配器，把事件送到公司已有的日志、指标或追踪系统，再在根部传给 `moduleLinkRouting`。`ModuleRouteObservability` 可以同时发送给多个观察者，例如一个写日志、一个计数、一个上报 tracing。
-
-```swift
-@MainActor
-final class AppRouteObserver: ModuleRouteObserving {
-    func record(_ event: ModuleRouteEvent) {
-        logger.notice("route outcome=\(event.outcome.rawValue) trace=\(event.traceID)")
-        metrics.increment("route.\(event.failureCode ?? "handled")")
-    }
-}
-
-let observability = ModuleRouteObservability(observers: [AppRouteObserver()])
-```
-
-每个事件包含 trace ID、结果、host、模块/路由标识、展示方式和稳定的 `failureCode`。它刻意不包含 URL query 值、token、手机号等可能敏感的数据；需要排障时用 trace ID 关联 App 自己的受控日志即可。
-
-### 路由契约 CI
-
-先用人话说：路由契约 CI 就是把 URL 当成团队之间的“接口协议”来管理。`/articles/:id?presentation=push&version=1` 不只是一个字符串；其他 Feature、网页、推送和旧 App 都可能依赖它。没有这层检查时，团队 A 改了路径或展示方式，团队 B 往往要等线上链接失效才发现。
-
-[`RouteContracts.json`](RouteContracts.json) 是这份受版本控制的公开路由目录。每个条目声明谁拥有路由、路径长什么样、允许怎样展示、以及必须有哪些参数。CI 会在构建前运行 `Scripts/validate_route_contract.swift`，拒绝重复的路由 ID 或路径/展示方式组合、非法展示方式，以及缺少 `presentation` 或 `version` 参数的契约。
-
-怎么用：新增或修改公开链接时，按同一个 PR 同步修改四处：Feature 的 URL 解析器、`RouteContracts.json`、README/调用方示例、以及必要的迁移说明。CI 擅长阻止目录本身的结构错误；是否可以删除旧链接、旧版本如何迁移，则仍应在 PR 审查和发布说明中明确，这是为了避免把“自动检查”误当成“自动兼容”。
-
-此外，PR CI 会把当前目录与该 PR 的精确基线提交比较。它会拒绝删除路由、修改路径模板、移除展示方式、移除必填参数或移除支持的协议版本。这样公开链接的破坏性修改会在合并前暴露；这类修改只能在主版本发布时进行，并配套迁移方案。
-
-### 公开 API 兼容性 CI
-
-先用人话说：这就是给 Swift 代码准备的“接口不被偷偷改坏”检查，作用和路由契约 CI 对 URL 的保护一样。App 可能长期导入 `URLRouter` 或 `URLRouterPolicyProvider`，并调用某个公开类型或方法；如果库在小版本升级中删除或改掉它，App 下次升级依赖时就会编译失败。
-
-每个 PR 的 CI 都会使用 SwiftPM 自带的 API 对比工具，把两个公开库产品与该 PR 的精确基线提交比较。它会在合并前拒绝删除公开类型、修改函数签名等破坏性改动；只新增 API 则可以正常通过。确实需要破坏 API 时，应发布主版本并提供明确迁移说明，而不是为了合并小版本或补丁版本而绕过这道检查。
-
-## 常见路由场景
-
-| 业务意图 | Feature 代码 |
+| 需求 | 加入什么 |
 | --- | --- |
-| Push 详情 | `openURL(URL(string: "https://example.com/articles/42?presentation=push&version=1")!)` |
-| 切换 Tab | `openURL(URL(string: "https://example.com/favorites?presentation=tab&version=1")!)` |
-| 展示 Sheet | `openURL(URL(string: "https://example.com/settings?presentation=sheet&version=1")!)` |
-| 全屏流程 | `openURL(URL(string: "https://example.com/sign-in?presentation=fullScreenCover&version=1")!)` |
+| 网页链接也要打开同一页面 | Universal Link |
+| 要远程暂停某个 Feature 或全部路由 | `URLRouterPolicyProvider` 与 `ModuleRoutePolicyStore` |
+| 推送、链接、按钮可能同时到达 | 每个场景一个 `ModuleRouteCoordinator` |
+| 客服需要知道链接为什么没反应 | `ModuleRouteObservability` |
+| 营销或网页依赖公开链接 | `RouteContracts.json` 与契约 CI |
 
-异步操作完成后，回到主线程再调用 `openURL`：
+这些能力都是按需接入。URLRouter 不会替你选网络客户端、登录流程、远程配置
+厂商、埋点厂商或后端；这些仍是 App 的责任，Package 只提供清晰的路由边界。
 
-```swift
-Task {
-    let id = try await articleService.recommendedArticleID()
-    await MainActor.run {
-        openURL(URL(string: "https://example.com/articles/\(id)?presentation=push&version=1")!)
-    }
-}
-```
+## Demo 与验证
 
-### 从一个 Feature Package 跳转到另一个
-
-Feature A 不导入 Feature B，也不引用 B 的 View；它只发送 B 已公开的 URL 协议：
-
-```swift
-// 位于 NavigationFeature
-@Environment(\.openURL) private var openURL
-
-Button("打开内容文章") {
-    openURL(URL(string: "https://example.com/articles/42?presentation=push&version=1")!)
-}
-```
-
-`ContentFeature` 负责 `/articles/*` 并提供 `ArticleView`。它也可以用相同方式跳回 `NavigationFeature`：
-
-```swift
-// 位于 ContentFeature
-Button("打开设置") {
-    openURL(URL(string: "https://example.com/settings?presentation=sheet&version=1")!)
-}
-```
-
-两个模块都必须被链接并加入 `ModuleRouteRegistry`。Demo 注册了 `DemoNavigationFeature` 和 `DemoContentFeature`，并演示双向跳转。
-
-## Demo 与测试
-
-Demo 使用两个真实的本地 Swift Package：
-
-```text
-Features/
-├── NavigationFeature/  # 首页、收藏、设置、登录
-└── ContentFeature/     # 文章详情
-```
-
-两个 Package 都依赖 `URLRouter`，但它们互不依赖。`NavigationFeature` 打开由 `ContentFeature` 负责的文章 URL；`ContentFeature` 打开由 `NavigationFeature` 负责的设置 URL。
-
-这是刻意设计的边界：跨 Feature 跳转应使用 URL 协议，不应为了访问对方 View 或路由类型而直接导入另一个 Feature Package。
-
-`URLRouterDemo` 是 iOS 17+ 的参考应用，演示了跨平台的 `RouterHost` 组合方式、四种 URL 展示方式、跨 Package 跳转、严格的 version=1 协议校验、应用内路由遥测状态，以及可选 `URLRouterPolicyProvider` 的缓存优先刷新流程。Demo 的 `DemoPolicySource` 故意使用本地数据；生产环境请替换为 App 自己的来源。面向 macOS 14+、tvOS 17+ 或 watchOS 10+ 的 App 同样可使用 `RouterHost`、`moduleLinkRouting` 与 Feature Package；SwiftUI 会按平台适配导航和模态展示。由于 SwiftUI 在 macOS 上不提供 `fullScreenCover`，该展示方式会在 macOS 中以 sheet 呈现。
-
-打开 `URLRouter.xcodeproj`，选择 **URLRouterDemo** scheme 与 iOS 17+ simulator 后运行，Xcode 会自动解析两个本地 Package。
-
-运行测试：
+`URLRouterDemo` 是 iOS 17+ 的参考 App，演示本地 Feature Package、四种展示
+方式、跨 Package 跳转、缓存优先策略生命周期、遥测和并发路由协调。
 
 ```bash
 swift test
 swift Scripts/validate_route_contract.swift RouteContracts.json
 ```
 
-## 许可证
+核心库和 `RouterHost` 支持上述四个平台。macOS 的 SwiftUI 没有
+`fullScreenCover`，因此该展示方式会自动以 sheet 呈现。
 
-URLRouter 使用 [MIT License](LICENSE) 发布。
+## 项目结构
 
-## 社区与维护
+```text
+Sources/URLRouter/                 # 核心路由库
+Sources/URLRouterPolicyProvider/   # 可选策略刷新 product
+Tests/                             # SwiftPM 单元测试
+Features/                          # 本地 Feature Package 示例
+URLRouterDemo/                     # 可运行的 iOS 参考 App
+docs/                              # 按任务拆分的文档
+```
 
-提交 PR 请阅读 [CONTRIBUTING.md](CONTRIBUTING.md)，支持渠道见
-[SUPPORT.md](SUPPORT.md)，安全漏洞请遵循 [SECURITY.md](SECURITY.md)，支持版本与
-兼容性策略见 [MAINTENANCE.md](MAINTENANCE.md)。
+## 许可证与社区
+
+URLRouter 以 [MIT License](LICENSE) 发布。提交 PR 前请阅读
+[CONTRIBUTING.md](CONTRIBUTING.md)。支持、漏洞报告和维护策略请见
+[SUPPORT.md](SUPPORT.md)、[SECURITY.md](SECURITY.md) 与
+[MAINTENANCE.md](MAINTENANCE.md)。

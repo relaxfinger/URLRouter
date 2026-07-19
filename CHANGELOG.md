@@ -4,6 +4,14 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [2.4.7] - 2026-07-19
+
+### Changed
+
+- Reorganized the English and Chinese documentation into a concise README plus task-focused getting-started, architecture, and production-governance guides.
+- Added a clear documentation map and aligned the beginner blog with the repository guides, so readers can move from the first route to production operations without duplicated or conflicting instructions.
+- Refreshed repository metadata and documentation links for clearer discovery of the Swift Package, supported platforms, and practical integration path.
+
 ## [2.4.6] - 2026-07-18
 
 ### Added
