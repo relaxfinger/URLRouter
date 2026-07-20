@@ -1,41 +1,68 @@
 {
-  "schemaVersion": 1,
-  "supportedVersions": ["1"],
-  "routes": [
+  "routes" : [
     {
-      "moduleID": "content",
-      "routeID": "article",
-      "pathTemplate": "/articles/:id",
-      "presentations": ["push"],
-      "requiredQueryItems": ["presentation", "version"]
+      "moduleID" : "navigation",
+      "pathTemplate" : "/",
+      "presentations" : [
+        "tab"
+      ],
+      "requiredQueryItems" : [
+        "presentation",
+        "version"
+      ],
+      "routeID" : "home"
     },
     {
-      "moduleID": "navigation",
-      "routeID": "home",
-      "pathTemplate": "/",
-      "presentations": ["tab"],
-      "requiredQueryItems": ["presentation", "version"]
+      "moduleID" : "navigation",
+      "pathTemplate" : "/favorites",
+      "presentations" : [
+        "tab"
+      ],
+      "requiredQueryItems" : [
+        "presentation",
+        "version"
+      ],
+      "routeID" : "favorites"
     },
     {
-      "moduleID": "navigation",
-      "routeID": "favorites",
-      "pathTemplate": "/favorites",
-      "presentations": ["tab"],
-      "requiredQueryItems": ["presentation", "version"]
+      "moduleID" : "navigation",
+      "pathTemplate" : "/settings",
+      "presentations" : [
+        "sheet"
+      ],
+      "requiredQueryItems" : [
+        "presentation",
+        "version"
+      ],
+      "routeID" : "settings"
     },
     {
-      "moduleID": "navigation",
-      "routeID": "settings",
-      "pathTemplate": "/settings",
-      "presentations": ["sheet"],
-      "requiredQueryItems": ["presentation", "version"]
+      "moduleID" : "navigation",
+      "pathTemplate" : "/sign-in",
+      "presentations" : [
+        "fullScreenCover"
+      ],
+      "requiredQueryItems" : [
+        "presentation",
+        "version"
+      ],
+      "routeID" : "signIn"
     },
     {
-      "moduleID": "navigation",
-      "routeID": "signIn",
-      "pathTemplate": "/sign-in",
-      "presentations": ["fullScreenCover"],
-      "requiredQueryItems": ["presentation", "version"]
+      "moduleID" : "content",
+      "pathTemplate" : "/articles/:id",
+      "presentations" : [
+        "push"
+      ],
+      "requiredQueryItems" : [
+        "presentation",
+        "version"
+      ],
+      "routeID" : "article"
     }
+  ],
+  "schemaVersion" : 1,
+  "supportedVersions" : [
+    "1"
   ]
 }

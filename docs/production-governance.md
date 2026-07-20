@@ -146,9 +146,10 @@ top failure codes, and queue-full/expiry counts.
 
 ## Protect published URLs with contract CI
 
-`RouteContracts.json` is a source-controlled catalog of public routes. In the
-same pull request that changes a public route, update the Feature parser, URL
-builder, catalog, tests, and any migration note.
+`RouteContracts.json` is the one source-controlled catalog of public routes in
+the App root, not a file copied into every Feature Package. In the same pull
+request that changes a public route, update the Feature parser and URL builder,
+regenerate the catalog, update tests, and add any migration note.
 
 CI validates the catalog and compares it with the PR base commit. It rejects an
 accidental removal or incompatible change to a path, presentation, required
@@ -156,14 +157,39 @@ parameter, or supported contract version. Treat an intentional break as a
 major-version change with a migration plan.
 
 ```bash
+swift Scripts/update_route_contracts.swift --check
 swift Scripts/validate_route_contract.swift RouteContracts.json
 ```
+
+Run the update command without `--check` to write the current catalog. Add the
+following Xcode **Run Script** build phase before compiling sources to make
+every local build reject an out-of-date catalog. Replace the URLRouter path
+with the location used by your App:
+
+```bash
+unset SDKROOT
+swift "${SRCROOT}/Vendor/URLRouter/Scripts/update_route_contracts.swift" \
+  --app-root "${SRCROOT}" \
+  --check
+swift "${SRCROOT}/Vendor/URLRouter/Scripts/generate_route_catalog.swift" \
+  --app-root "${SRCROOT}" \
+  --contracts RouteContracts.json \
+  --output docs/route-catalog.html
+```
+
+Use `--check` in a build phase so the build does not modify tracked source
+files. Because the generator recursively reads local Feature Packages, either
+list every scanned source directory as a build-phase input or set
+`ENABLE_USER_SCRIPT_SANDBOXING = NO` for this trusted script (the demo uses the
+latter). Run the updating form deliberately before committing; use the same
+check command in CI. The second command refreshes the local, searchable route
+catalog after every successful contract check.
 
 ## A practical rollout order
 
 1. Ship one versioned URL and its Feature resolver.
 2. Add Universal Links and tests.
-3. Add `RouteContracts.json` before other teams depend on the URL.
+3. Generate `RouteContracts.json` at the App root before other teams depend on the URL.
 4. Add observability when support needs diagnosis.
 5. Add the Provider when operations needs safe remote restrictions.
 6. Add the coordinator when route sources actually compete.

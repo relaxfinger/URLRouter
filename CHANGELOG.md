@@ -4,6 +4,17 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-07-20
+
+### Added
+
+- Added App-root route-contract generation and validation scripts that discover local Feature Packages, update the single `RouteContracts.json`, and generate a searchable local route catalog.
+- Added a URLRouterDemo build phase that verifies route contracts and refreshes the route catalog on every build.
+
+### Changed
+
+- Documented the App-root ownership model for route contracts and the Xcode/CI integration workflow in English and Chinese.
+
 ## [2.4.7] - 2026-07-19
 
 ### Changed

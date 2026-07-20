@@ -42,7 +42,7 @@ Add `URLRouter` to the App target and to any Feature Package that declares a
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.4.7")
+    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.5.0")
 ]
 ```
 
@@ -172,7 +172,27 @@ lifecycle, telemetry, and coordinated concurrent routes.
 
 ```bash
 swift test
+swift Scripts/update_route_contracts.swift
 swift Scripts/validate_route_contract.swift RouteContracts.json
+```
+
+`update_route_contracts.swift` scans every Swift Package in the App root that
+declares a `RouteModule` and creates or updates the single App-owned
+`RouteContracts.json`. Feature Packages do not keep their own copies. The
+generator fails when it cannot reliably infer a route, rather than publishing a
+guessed contract.
+
+When URLRouter lives outside the App repository, point the script at the App
+root (all relative paths below are resolved from it):
+
+```bash
+swift /path/to/URLRouter/Scripts/update_route_contracts.swift \
+  --app-root /path/to/MyApp \
+  --output RouteContracts.json
+swift /path/to/URLRouter/Scripts/generate_route_catalog.swift \
+  --app-root /path/to/MyApp \
+  --contracts RouteContracts.json \
+  --output docs/route-catalog.html
 ```
 
 The core library and `RouterHost` support all four listed Apple platforms. On

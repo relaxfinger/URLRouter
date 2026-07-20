@@ -137,21 +137,44 @@ final class AppRouteObserver: ModuleRouteObserving {
 
 ## 用契约 CI 保护已发布 URL
 
-`RouteContracts.json` 是受版本控制的公开路由目录。修改公开路由时，同一个 PR 还要
-修改 Feature 解析器、URL builder、目录、测试，以及必要的迁移说明。
+`RouteContracts.json` 是 App 根目录唯一、受版本控制的公开路由目录，而不是每个
+Feature Package 都复制一份。修改公开路由时，同一个 PR 还要修改 Feature 解析器和
+URL builder、重新生成目录、更新测试，以及必要的迁移说明。
 
 CI 会校验目录并与 PR 基线比较，拒绝意外删除或不兼容修改路径、展示方式、必填参数
 和支持的协议版本。确实要破坏兼容性时，按主版本变更处理并提供迁移方案。
 
 ```bash
+swift Scripts/update_route_contracts.swift --check
 swift Scripts/validate_route_contract.swift RouteContracts.json
 ```
+
+不带 `--check` 执行更新脚本会写入最新目录。要让每次本地构建都检查契约，请在 Xcode 的
+**Compile Sources 之前**添加一个 **Run Script** Build Phase；将 URLRouter 路径替换为
+App 实际使用的位置：
+
+```bash
+unset SDKROOT
+swift "${SRCROOT}/Vendor/URLRouter/Scripts/update_route_contracts.swift" \
+  --app-root "${SRCROOT}" \
+  --check
+swift "${SRCROOT}/Vendor/URLRouter/Scripts/generate_route_catalog.swift" \
+  --app-root "${SRCROOT}" \
+  --contracts RouteContracts.json \
+  --output docs/route-catalog.html
+```
+
+Build Phase 使用 `--check`，避免编译过程中改写受版本控制的文件。生成器会递归读取本地
+Feature Package，因此请将每个被扫描的源码目录列为 Build Phase 输入，或者对此受信任脚本
+设置 `ENABLE_USER_SCRIPT_SANDBOXING = NO`（Demo 使用后一种方式）。开发者在提交前主动
+运行不带该参数的更新命令；CI 同样运行检查命令。第二条命令会在契约检查通过后刷新
+本地可搜索的路由网页。
 
 ## 一个实际的接入顺序
 
 1. 发布一条带版本 URL 和对应 Feature 解析器。
 2. 加入 Universal Link 和测试。
-3. 其他团队依赖 URL 前加入 `RouteContracts.json`。
+3. 其他团队依赖 URL 前，在 App 根目录生成 `RouteContracts.json`。
 4. 客服需要排障时加入可观测性。
 5. 运营需要安全的远程限制时加入 Provider。
 6. 多个路由来源真的会竞争时加入 coordinator。
