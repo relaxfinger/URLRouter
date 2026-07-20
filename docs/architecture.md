@@ -114,7 +114,7 @@ from being “handled” without visibly switching tabs.
 For every public route change, update these items in one pull request:
 
 1. The Feature's parser and URL builder.
-2. `RouteContracts.json`.
+2. Generate the App-root `RouteContracts.json` with `update_route_contracts.swift`.
 3. Tests and caller documentation.
 4. Migration notes if an old URL remains in emails, websites, notifications, or
    released apps.
@@ -122,6 +122,10 @@ For every public route change, update these items in one pull request:
 The repository CI catches structural and breaking catalog changes; it cannot
 decide your product migration policy. Treat a removed or reinterpreted URL as a
 breaking change and plan it accordingly.
+
+`RouteContracts.json` belongs once, at the App root. It aggregates every
+Feature Package's public routes; do not distribute separate catalogs through
+Features. This lets the App validate and publish one coherent URL surface.
 
 For rollout, remote policy, concurrency, and observability guidance, continue
 to [Production governance](production-governance.md).

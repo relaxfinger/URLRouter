@@ -41,7 +41,7 @@ Package。
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.4.7")
+    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.5.0")
 ]
 ```
 
@@ -168,8 +168,30 @@ URL builder、Universal Link、Tab 和带版本的路由协议。
 
 ```bash
 swift test
+swift Scripts/update_route_contracts.swift
 swift Scripts/validate_route_contract.swift RouteContracts.json
+swift Scripts/generate_route_catalog.swift
 ```
+
+`update_route_contracts.swift` 会扫描当前 App 根目录内所有声明 `RouteModule` 的 Swift
+Package，并生成或更新根目录唯一的 `RouteContracts.json`。随后，最后一条命令会扫描
+同一批 Feature，并在
+`docs/route-catalog.html` 生成可搜索的本地路由目录：URL 模板、路径/查询参数、目标页面、
+Feature package 和展示方式都会列出。
+
+当脚本放在 URLRouter 包内、但要扫描另一个 App 时，指定 App 根目录即可（契约和输出路径
+均相对于该根目录）：
+
+```bash
+swift /path/to/URLRouter/Scripts/generate_route_catalog.swift \
+  --app-root /path/to/MyApp \
+  --contracts RouteContracts.json \
+  --output docs/route-catalog.html
+```
+
+同一个 App 根目录只能有一份 `RouteContracts.json`；Feature Package 不应各自维护副本。
+生成器会识别标准的 `RouteModule` 解析器、`ModuleRoute` 与 URL builder 写法；无法可靠推导
+路径或参数时会失败，而不会生成猜测的契约。
 
 核心库和 `RouterHost` 支持上述四个平台。macOS 的 SwiftUI 没有
 `fullScreenCover`，因此该展示方式会自动以 sheet 呈现。
