@@ -210,13 +210,17 @@ func sampleURL(for route: RouteContract, versions: [String]) -> String {
 }
 
 func parameters(for route: RouteContract) -> String {
-    let pathParameters = matches(#":([A-Za-z][A-Za-z0-9_]*)"#, in: route.pathTemplate).compactMap { $0.count > 1 ? "\($0[1])（路径）" : nil }
-    let queryParameters = route.requiredQueryItems.map { "\($0)（查询，必填）" }
+    let pathParameters = matches(#":([A-Za-z][A-Za-z0-9_]*)"#, in: route.pathTemplate).compactMap {
+        $0.count > 1 ? "\(html($0[1])) <span class=\"parameter-kind\" data-i18n=\"pathParameter\">(path)</span>" : nil
+    }
+    let queryParameters = route.requiredQueryItems.map {
+        "\(html($0)) <span class=\"parameter-kind\" data-i18n=\"requiredQuery\">(query, required)</span>"
+    }
     return (pathParameters + queryParameters).joined(separator: "<br>")
 }
 
 func featureName(for item: CatalogRoute) -> String {
-    item.feature?.name ?? "未找到对应 Feature package"
+    item.feature?.name ?? "Unmapped Feature Package"
 }
 
 func anchorID(for featureName: String) -> String {
@@ -248,14 +252,14 @@ do {
     let catalogFeatures = features + (appFeature.map { [$0] } ?? [])
     let catalog = manifest.routes.map { route -> CatalogRoute in
         let feature = catalogFeatures.first { $0.moduleIDs.contains(route.moduleID) }
-        let destination = feature?.destinations[route.routeID] ?? "由 App 容器处理（Feature 未提供 destination View）"
+        let destination = feature?.destinations[route.routeID] ?? "Handled by the App shell (no Feature destination view)"
         return CatalogRoute(contract: route, feature: feature, destination: destination)
     }
 
     let groupedCatalog = Dictionary(grouping: catalog, by: featureName(for:))
     let orderedFeatureNames = groupedCatalog.keys.sorted { left, right in
-        if left == "未找到对应 Feature package" { return false }
-        if right == "未找到对应 Feature package" { return true }
+        if left == "Unmapped Feature Package" { return false }
+        if right == "Unmapped Feature Package" { return true }
         return left.localizedStandardCompare(right) == .orderedAscending
     }
 
@@ -274,7 +278,7 @@ do {
               <td>\(parameters(for: route))</td>
               <td><code>\(html(item.destination))</code></td>
               <td><code>\(html(route.moduleID))/\(html(route.routeID))</code></td>
-              <td><span class=\"presentation\">\(html(route.presentations.joined(separator: "、")))</span></td>
+              <td><span class=\"presentation\">\(html(route.presentations.joined(separator: ", ")))</span></td>
             </tr>
             """
         }.joined(separator: "\n")
@@ -282,11 +286,11 @@ do {
         <section class=\"feature-section\" id=\"\(html(anchorID(for: name)))\" data-feature=\"\(html(name))\">
           <div class=\"feature-heading\">
             <div><p class=\"eyebrow\">FEATURE PACKAGE</p><h2>\(html(name))</h2></div>
-            <span class=\"route-count\">\(routes.count) 条路由</span>
+            <span class=\"route-count\"><span>\(routes.count)</span> <span data-i18n=\"routes\">routes</span></span>
           </div>
           <div class=\"table-wrap\">
             <table>
-              <thead><tr><th>URL 模板</th><th>参数</th><th>目标页面</th><th>路由 ID</th><th>展示方式</th></tr></thead>
+              <thead><tr><th data-i18n=\"urlTemplate\">URL template</th><th data-i18n=\"parameters\">Parameters</th><th data-i18n=\"destination\">Destination</th><th data-i18n=\"routeID\">Route ID</th><th data-i18n=\"presentation\">Presentation</th></tr></thead>
               <tbody>\(rows)</tbody>
             </table>
           </div>
@@ -296,36 +300,55 @@ do {
 
     let page = """
     <!doctype html>
-    <html lang="zh-CN">
+    <html lang="en">
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>URLRouter 路由目录</title>
+      <title>URLRouter Route Catalog</title>
       <style>
         :root { color-scheme: light dark; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
         * { box-sizing: border-box; } body { margin: 0; background: Canvas; color: CanvasText; line-height: 1.5; }
         header { padding: 48px max(24px, calc((100vw - 1320px) / 2)); border-bottom: 1px solid color-mix(in srgb, CanvasText 16%, transparent); background: color-mix(in srgb, AccentColor 7%, Canvas); }
         h1 { margin: 0 0 4px; font-size: clamp(2rem, 5vw, 3.2rem); letter-spacing: -.04em; } .meta { color: color-mix(in srgb, CanvasText 60%, transparent); margin: 0; }
         main { max-width: 1320px; margin: 0 auto; padding: 28px 24px 72px; }
+        .header-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; } .language-toggle { padding: 7px 10px; border: 1px solid color-mix(in srgb, CanvasText 24%, transparent); border-radius: 8px; background: Canvas; color: CanvasText; font: inherit; cursor: pointer; white-space: nowrap; } .language-toggle:hover { border-color: AccentColor; }
         .search { position: sticky; top: 0; z-index: 2; padding: 16px 0; background: Canvas; } input { width: 100%; padding: 13px 16px; font: inherit; border: 1px solid color-mix(in srgb, CanvasText 28%, transparent); border-radius: 10px; background: Canvas; color: CanvasText; box-shadow: 0 4px 18px color-mix(in srgb, CanvasText 7%, transparent); }
         .feature-nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 30px; } .feature-link { display: inline-flex; gap: 9px; align-items: center; padding: 7px 10px 7px 12px; color: inherit; text-decoration: none; border: 1px solid color-mix(in srgb, CanvasText 17%, transparent); border-radius: 999px; } .feature-link:hover { border-color: AccentColor; } .feature-link b { min-width: 21px; padding: 1px 6px; text-align: center; border-radius: 99px; background: color-mix(in srgb, AccentColor 18%, transparent); font-size: .8em; }
         .feature-section { scroll-margin-top: 84px; margin: 0 0 30px; padding: 22px; border: 1px solid color-mix(in srgb, CanvasText 14%, transparent); border-radius: 16px; background: color-mix(in srgb, CanvasText 2%, Canvas); box-shadow: 0 10px 30px color-mix(in srgb, CanvasText 4%, transparent); } .feature-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 18px; } h2 { margin: 0; font-size: 1.35rem; } .eyebrow { margin: 0 0 3px; font-size: .72rem; letter-spacing: .12em; color: color-mix(in srgb, CanvasText 55%, transparent); } .route-count, .presentation { display: inline-block; padding: 3px 8px; border-radius: 6px; background: color-mix(in srgb, AccentColor 15%, transparent); font-size: .84rem; white-space: nowrap; }
-        .table-wrap { overflow-x: auto; } table { width: 100%; min-width: 850px; border-collapse: collapse; } th, td { padding: 12px; text-align: left; vertical-align: top; border-bottom: 1px solid color-mix(in srgb, CanvasText 12%, transparent); } th { font-size: .78rem; letter-spacing: .04em; color: color-mix(in srgb, CanvasText 62%, transparent); } tr:last-child td { border-bottom: 0; } code { font-size: .88em; word-break: break-word; } .empty { display: none; margin: 32px 0; padding: 24px; text-align: center; border: 1px dashed color-mix(in srgb, CanvasText 30%, transparent); border-radius: 12px; color: color-mix(in srgb, CanvasText 65%, transparent); }
+        .table-wrap { overflow-x: auto; } table { width: 100%; min-width: 850px; border-collapse: collapse; } th, td { padding: 12px; text-align: left; vertical-align: top; border-bottom: 1px solid color-mix(in srgb, CanvasText 12%, transparent); } th { font-size: .78rem; letter-spacing: .04em; color: color-mix(in srgb, CanvasText 62%, transparent); } tr:last-child td { border-bottom: 0; } code { font-size: .88em; word-break: break-word; } .parameter-kind { color: color-mix(in srgb, CanvasText 62%, transparent); font-size: .86em; } .empty { display: none; margin: 32px 0; padding: 24px; text-align: center; border: 1px dashed color-mix(in srgb, CanvasText 30%, transparent); border-radius: 12px; color: color-mix(in srgb, CanvasText 65%, transparent); }
         @media (max-width: 800px) { header { padding-top: 30px; padding-bottom: 30px; } main { padding: 18px 12px 48px; } .feature-section { padding: 16px; } .feature-heading { align-items: center; } }
       </style>
     </head>
     <body>
       <header>
-        <h1>URLRouter 路由目录</h1>
-        <p class="meta">由 <code>\(html(configuration.contractsURL.lastPathComponent))</code> 与 App 内的 Feature Package 自动生成 · 共 \(catalog.count) 条路由，分属 \(orderedFeatureNames.count) 个 Feature</p>
+        <div class="header-top"><h1 data-i18n="title">URLRouter Route Catalog</h1><button id="language-toggle" class="language-toggle" type="button" aria-label="Switch to Chinese">中文</button></div>
+        <p class="meta"><span data-i18n="generatedFrom">Generated from</span> <code>\(html(configuration.contractsURL.lastPathComponent))</code> <span data-i18n="fromSources">and discovered App / Feature Package sources</span> · \(catalog.count) <span data-i18n="routes">routes</span> <span data-i18n="across">across</span> \(orderedFeatureNames.count) <span data-i18n="features">Features</span></p>
       </header>
       <main>
-        <div class="search"><input id="filter" type="search" placeholder="筛选 Feature、URL、参数、页面或路由 ID…" autofocus></div>
-        <nav class="feature-nav" aria-label="Feature package 快速定位">\(featureNavigation)</nav>
-        <p id="empty" class="empty">没有匹配的路由或 Feature package。</p>
+        <div class="search"><input id="filter" type="search" data-i18n-placeholder="filterPlaceholder" placeholder="Filter Features, URLs, parameters, destinations, or route IDs…" autofocus></div>
+        <nav class="feature-nav" data-i18n-aria-label="featureNavigation" aria-label="Feature Package navigation">\(featureNavigation)</nav>
+        <p id="empty" class="empty" data-i18n="noMatches">No matching routes or Feature Packages.</p>
         \(sections)
       </main>
       <script>
+        const translations = {
+          en: { title: 'URLRouter Route Catalog', generatedFrom: 'Generated from', fromSources: 'and discovered App / Feature Package sources', routes: 'routes', across: 'across', features: 'Features', filterPlaceholder: 'Filter Features, URLs, parameters, destinations, or route IDs…', featureNavigation: 'Feature Package navigation', noMatches: 'No matching routes or Feature Packages.', urlTemplate: 'URL template', parameters: 'Parameters', destination: 'Destination', routeID: 'Route ID', presentation: 'Presentation', pathParameter: '(path)', requiredQuery: '(query, required)' },
+          zh: { title: 'URLRouter 路由目录', generatedFrom: '由', fromSources: '与 App / Feature Package 源码自动生成', routes: '条路由', across: '分属', features: '个 Feature', filterPlaceholder: '筛选 Feature、URL、参数、页面或路由 ID…', featureNavigation: 'Feature Package 快速定位', noMatches: '没有匹配的路由或 Feature Package。', urlTemplate: 'URL 模板', parameters: '参数', destination: '目标页面', routeID: '路由 ID', presentation: '展示方式', pathParameter: '（路径）', requiredQuery: '（查询，必填）' }
+        };
+        let language = 'en';
+        const languageToggle = document.querySelector('#language-toggle');
+        function applyLanguage(nextLanguage) {
+          language = nextLanguage;
+          const copy = translations[language];
+          document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
+          document.title = copy.title;
+          document.querySelectorAll('[data-i18n]').forEach(element => { element.textContent = copy[element.dataset.i18n]; });
+          document.querySelectorAll('[data-i18n-placeholder]').forEach(element => { element.placeholder = copy[element.dataset.i18nPlaceholder]; });
+          document.querySelectorAll('[data-i18n-aria-label]').forEach(element => { element.setAttribute('aria-label', copy[element.dataset.i18nAriaLabel]); });
+          languageToggle.textContent = language === 'en' ? '中文' : 'English';
+          languageToggle.setAttribute('aria-label', language === 'en' ? 'Switch to Chinese' : '切换为英文');
+        }
+        languageToggle.addEventListener('click', () => applyLanguage(language === 'en' ? 'zh' : 'en'));
         const filter = document.querySelector('#filter');
         const sections = [...document.querySelectorAll('.feature-section')];
         const links = [...document.querySelectorAll('.feature-link')];
