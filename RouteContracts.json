@@ -1,6 +1,18 @@
 {
   "routes" : [
     {
+      "moduleID" : "app",
+      "pathTemplate" : "/diagnostics",
+      "presentations" : [
+        "sheet"
+      ],
+      "requiredQueryItems" : [
+        "presentation",
+        "version"
+      ],
+      "routeID" : "diagnostics"
+    },
+    {
       "moduleID" : "navigation",
       "pathTemplate" : "/",
       "presentations" : [

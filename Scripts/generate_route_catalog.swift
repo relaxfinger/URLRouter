@@ -72,6 +72,33 @@ func configuration(arguments: [String]) throws -> Configuration {
     )
 }
 
+/// Creates the App-root contract on first use so generating the catalog has no
+/// manual bootstrap step. Subsequent runs only read the tracked contract.
+func createInitialContractIfNeeded(configuration: Configuration) throws {
+    guard !fileManager.fileExists(atPath: configuration.contractsURL.path) else { return }
+    let scriptsDirectory = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+    let updateScript = scriptsDirectory.appendingPathComponent("update_route_contracts.swift")
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+    process.arguments = [
+        "swift", updateScript.path,
+        "--app-root", configuration.appRoot.path,
+        "--output", configuration.contractsURL.path
+    ]
+    var environment = ProcessInfo.processInfo.environment
+    environment.removeValue(forKey: "SDKROOT")
+    process.environment = environment
+    try process.run()
+    process.waitUntilExit()
+    guard process.terminationStatus == 0 else {
+        throw NSError(
+            domain: "RouteCatalog",
+            code: Int(process.terminationStatus),
+            userInfo: [NSLocalizedDescriptionKey: "Could not create the initial contract at \(configuration.contractsURL.path)."]
+        )
+    }
+}
+
 func contents(of path: String) throws -> String {
     try String(contentsOfFile: path, encoding: .utf8)
 }
@@ -201,6 +228,7 @@ func anchorID(for featureName: String) -> String {
 
 do {
     let configuration = try configuration(arguments: Array(CommandLine.arguments.dropFirst()))
+    try createInitialContractIfNeeded(configuration: configuration)
     let manifestData = try Data(contentsOf: configuration.contractsURL)
     let manifest = try JSONDecoder().decode(RouteContractManifest.self, from: manifestData)
     guard manifest.schemaVersion == 1 else { throw NSError(domain: "RouteCatalog", code: 1, userInfo: [NSLocalizedDescriptionKey: "Unsupported route contract schema version."]) }

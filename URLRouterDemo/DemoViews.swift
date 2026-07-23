@@ -11,6 +11,7 @@ import URLRouter // ModuleRouter and ModuleRoutePolicyStore drive this tab shell
 import NavigationFeature
 
 struct DemoTabs: View {
+    @Environment(\.openURL) private var openURL
     @Bindable private var router: ModuleRouter // URLRouter owns the selected tab state.
     @Bindable private var policyStore: ModuleRoutePolicyStore // URLRouter reads this on the next link.
     private let latestRouteEvent: ModuleRouteEvent?
@@ -44,6 +45,8 @@ struct DemoTabs: View {
                 Toggle("Routing enabled", isOn: routingEnabled)
                     .font(.caption)
                     .padding(.horizontal)
+                Button("Open App Diagnostics") { openURL(DemoAppLinks.diagnostics) }
+                    .font(.caption)
                 Text(policyStatus)
                     .font(.caption2)
                     .foregroundStyle(.secondary)

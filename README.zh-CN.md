@@ -41,7 +41,7 @@ Package。
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.5.3")
+    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.5.4")
 ]
 ```
 
@@ -209,7 +209,8 @@ swift package plugin generate-urlrouter-contracts --allow-writing-to-package-dir
 ```
 
 该命令会明确请求写入授权，再更新 App 根目录的 `RouteContracts.json` 和
-`docs/route-catalog.html`，供审查并提交 Git。
+`docs/route-catalog.html`，供审查并提交 Git。网页目录脚本会自动创建缺失的初始契约；
+受沙盒限制的 SwiftPM Build Plugin 则仍只做校验。
 
 完整的 Xcode 逐步配置（如何添加 Build Plugin、执行 Command Plugin、审查输出，以及插件
 未出现在列表时如何排查）见[路由插件工作流](docs/route-plugin-workflow.zh-CN.md)。

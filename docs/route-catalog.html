@@ -20,14 +20,33 @@
 <body>
   <header>
     <h1>URLRouter 路由目录</h1>
-    <p class="meta">由 <code>RouteContracts.json</code> 与 App 内的 Feature Package 自动生成 · 共 5 条路由，分属 2 个 Feature</p>
+    <p class="meta">由 <code>RouteContracts.json</code> 与 App 内的 Feature Package 自动生成 · 共 6 条路由，分属 3 个 Feature</p>
   </header>
   <main>
     <div class="search"><input id="filter" type="search" placeholder="筛选 Feature、URL、参数、页面或路由 ID…" autofocus></div>
-    <nav class="feature-nav" aria-label="Feature package 快速定位"><a class="feature-link" href="#feature-contentfeature"><span>ContentFeature</span><b>1</b></a>
+    <nav class="feature-nav" aria-label="Feature package 快速定位"><a class="feature-link" href="#feature-app"><span>App</span><b>1</b></a>
+        <a class="feature-link" href="#feature-contentfeature"><span>ContentFeature</span><b>1</b></a>
         <a class="feature-link" href="#feature-navigationfeature"><span>NavigationFeature</span><b>4</b></a></nav>
     <p id="empty" class="empty">没有匹配的路由或 Feature package。</p>
-    <section class="feature-section" id="feature-contentfeature" data-feature="ContentFeature">
+    <section class="feature-section" id="feature-app" data-feature="App">
+  <div class="feature-heading">
+    <div><p class="eyebrow">FEATURE PACKAGE</p><h2>App</h2></div>
+    <span class="route-count">1 条路由</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>URL 模板</th><th>参数</th><th>目标页面</th><th>路由 ID</th><th>展示方式</th></tr></thead>
+      <tbody><tr>
+  <td><code>https://example.com/diagnostics?presentation=sheet&amp;version=1</code></td>
+  <td>presentation（查询，必填）<br>version（查询，必填）</td>
+  <td><code>DemoDiagnosticsView</code></td>
+  <td><code>app/diagnostics</code></td>
+  <td><span class="presentation">sheet</span></td>
+</tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="feature-section" id="feature-contentfeature" data-feature="ContentFeature">
   <div class="feature-heading">
     <div><p class="eyebrow">FEATURE PACKAGE</p><h2>ContentFeature</h2></div>
     <span class="route-count">1 条路由</span>

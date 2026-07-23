@@ -4,6 +4,20 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [2.5.4] - 2026-07-23
+
+### Added
+
+- Add an App-owned `app/diagnostics` route to URLRouterDemo to demonstrate
+  routing UI that is not extracted into a Feature Package.
+
+### Changed
+
+- Create a missing `RouteContracts.json` automatically when generating the
+  route catalog, so first-run catalog generation succeeds.
+- Make the Demo build phase generate contracts and the catalog on its first
+  build instead of failing a validation-only check.
+
 ## [2.5.3] - 2026-07-23
 
 ### Changed

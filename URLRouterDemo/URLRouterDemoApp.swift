@@ -66,7 +66,8 @@ enum DemoModules {
     // Register every Feature Package with URLRouter; Features keep their own URL parsing.
     static let registry = ModuleRouteRegistry(modules: [
         ContentFeature.module,
-        NavigationFeatureRoutes.module
+        NavigationFeatureRoutes.module,
+        DemoAppRoutes.module // This route intentionally belongs to the App, not a Feature Package.
     ])
     static func makePolicyStore() -> ModuleRoutePolicyStore {
         // Keep URLRouter's trusted local rules separate from replaceable remote restrictions.
@@ -77,6 +78,49 @@ enum DemoModules {
             ),
             remotePolicy: ModuleRouteRemotePolicy() // Demo starts with routing enabled.
         )
+    }
+}
+
+/// Demonstrates a route owned directly by the App shell when a UI has not been
+/// extracted into its own Feature Package.
+@MainActor
+enum DemoAppRoutes {
+    static let id = "app"
+    static let diagnostics = ModuleRoute(moduleID: id, routeID: "diagnostics")
+
+    static let module = RouteModule(id: id) { link in
+        switch link.pathComponents {
+        case ["diagnostics"]: return diagnostics
+        default: return nil
+        }
+    } destination: { route in
+        switch route.routeID {
+        case "diagnostics": AnyView(DemoDiagnosticsView())
+        default: nil
+        }
+    }
+}
+
+enum DemoAppLinks {
+    static let diagnostics = URL(string: "https://example.com/diagnostics?presentation=sheet&version=1")!
+}
+
+private struct DemoDiagnosticsView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("App-owned route") {
+                    Text("This sheet is declared by URLRouterDemo, not by a Feature Package.")
+                }
+                Section("Route catalog") {
+                    Text("The generator lists this route in the App section.")
+                }
+            }
+            .navigationTitle("Diagnostics")
+            .toolbar { Button("Done") { dismiss() } }
+        }
     }
 }
 

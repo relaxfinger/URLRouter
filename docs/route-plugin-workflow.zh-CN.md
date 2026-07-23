@@ -21,6 +21,11 @@ Swift 源码中的公开路由，而不是每个 Feature Package 各维护一份
 并将 `URLRouter` library product 添加给该 App target。若 URLRouter 只是其他 Package 的
 间接依赖，插件不会出现在可选列表中。
 
+若缺少 `RouteContracts.json`，`generate_route_catalog.swift` 会自动创建它。因此使用 Xcode
+Run Script 集成时，首次编译即可生成两个受 Git 跟踪的文件。SwiftPM Build Plugin 刻意只做
+校验，且受沙盒限制不能改写受 Git 跟踪的文件；使用该集成时，首次仍需执行一次 Command
+Plugin 来创建文件。
+
 1. 在 Project navigator 选中蓝色的工程文件。
 2. 在 **TARGETS** 中选中拥有这些 Feature Package 的 App target。
 3. 打开 **Build Phases**。
