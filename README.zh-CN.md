@@ -41,7 +41,7 @@ Package。
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.5.5")
+    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.5.6")
 ]
 ```
 
@@ -161,59 +161,25 @@ URL builder、Universal Link、Tab 和带版本的路由协议。
 这些能力都是按需接入。URLRouter 不会替你选网络客户端、登录流程、远程配置
 厂商、埋点厂商或后端；这些仍是 App 的责任，Package 只提供清晰的路由边界。
 
-## Demo 与验证
+## 路由契约与插件工作流
 
-`URLRouterDemo` 是 iOS 17+ 的参考 App，演示本地 Feature Package、四种展示
-方式、跨 Package 跳转、缓存优先策略生命周期、遥测和并发路由协调。
+URLRouter 只维护一份位于 App 根目录的路由契约，而不是每个 Feature 各一份。它会扫描
+Feature Package 和 App 自身的 Swift 源码，并生成两个需要审查、提交的产物：
 
-```bash
-swift test
-swift Scripts/update_route_contracts.swift
-swift Scripts/validate_route_contract.swift RouteContracts.json
-swift Scripts/generate_route_catalog.swift
-```
+- `RouteContracts.json`：公开 URL 契约，用于兼容性校验。
+- `docs/route-catalog.html`：按 App 与 Feature Package 分组、可搜索的路由目录。
 
-`update_route_contracts.swift` 会扫描当前 App 根目录内所有声明 `RouteModule` 的 Feature Swift
-Package，以及 App 自身的 Swift 源码，并生成或更新根目录唯一的 `RouteContracts.json`。随后，
-最后一条命令会扫描相同范围，并在
-`docs/route-catalog.html` 生成可搜索的本地路由目录：URL 模板、路径/查询参数、目标页面、
-Feature package 和展示方式都会列出。目录按 Feature package 分为独立表格，顶部提供带路由数
-量的快速定位入口；App 自身的路由会显示在独立的 `App` 分区。
-
-当脚本放在 URLRouter 包内、但要扫描另一个 App 时，指定 App 根目录即可（契约和输出路径
-均相对于该根目录）：
-
-```bash
-swift /path/to/URLRouter/Scripts/generate_route_catalog.swift \
-  --app-root /path/to/MyApp \
-  --contracts RouteContracts.json \
-  --output docs/route-catalog.html
-```
-
-同一个 App 根目录只能有一份 `RouteContracts.json`；Feature Package 不应各自维护副本。
-生成器会识别标准的 `RouteModule` 解析器、`ModuleRoute` 与 URL builder 写法；无法可靠推导
-路径或参数时会失败，而不会生成猜测的契约。
-
-### 远程 SPM 依赖的自动执行
-
-URLRouter 提供两个无需硬编码 checkout 路径的 Plugin Product。将远程 URLRouter 依赖添加到
-App 后，在 target 的 **Build Phases → Run Build Tool Plug-ins** 中启用
-`URLRouterRouteBuildPlugin`。每次编译会校验路由契约，并在 Derived Data 的插件工作目录生成
-可浏览的路由网页；它不会改写 App 仓库。
-
-新增或修改路由后，在 Xcode 选择 **File → Packages → URLRouterRouteCommandPlugin**，或在
-Swift Package App 根目录运行：
-
-```bash
-swift package plugin generate-urlrouter-contracts --allow-writing-to-package-directory
-```
-
-该命令会明确请求写入授权，再更新 App 根目录的 `RouteContracts.json` 和
-`docs/route-catalog.html`，供审查并提交 Git。网页目录脚本会自动创建缺失的初始契约；
-受沙盒限制的 SwiftPM Build Plugin 则仍只做校验。
+`URLRouterRouteBuildPlugin` 会在每次编译时校验契约，并在 Derived Data 生成临时网页目录。
+开发者修改公开路由时，`URLRouterRouteCommandPlugin` 会明确更新受 Git 跟踪的
+`RouteContracts.json` 和 `docs/route-catalog.html`。
 
 完整的 Xcode 逐步配置（如何添加 Build Plugin、执行 Command Plugin、审查输出，以及插件
 未出现在列表时如何排查）见[路由插件工作流](docs/route-plugin-workflow.zh-CN.md)。
+
+## 示例 App
+
+`URLRouterDemo` 是 iOS 17+ 的参考 App，演示本地 Feature Package、直接由 App 承载的路由、
+四种展示方式、跨 Package 跳转、缓存优先策略生命周期、遥测和并发路由协调。
 
 核心库和 `RouterHost` 支持上述四个平台。macOS 的 SwiftUI 没有
 `fullScreenCover`，因此该展示方式会自动以 sheet 呈现。
