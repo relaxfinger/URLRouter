@@ -4,6 +4,13 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [2.5.6] - 2026-07-23
+
+### Changed
+
+- Streamline the README route-contract section around the two plugin products
+  and link detailed setup instructions to the dedicated workflow guide.
+
 ## [2.5.5] - 2026-07-23
 
 ### Changed
