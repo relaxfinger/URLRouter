@@ -4,6 +4,15 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [2.5.3] - 2026-07-23
+
+### Changed
+
+- Scan App-owned Swift sources in addition to independent Feature Packages when
+  generating route contracts and the route catalog.
+- Render App-owned routes in their own `App` catalog section while continuing
+  to keep each Feature Package in a separate table.
+
 ## [2.5.2] - 2026-07-23
 
 ### Changed

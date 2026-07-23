@@ -41,7 +41,7 @@ Package。
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.5.2")
+    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.5.3")
 ]
 ```
 
@@ -173,12 +173,12 @@ swift Scripts/validate_route_contract.swift RouteContracts.json
 swift Scripts/generate_route_catalog.swift
 ```
 
-`update_route_contracts.swift` 会扫描当前 App 根目录内所有声明 `RouteModule` 的 Swift
-Package，并生成或更新根目录唯一的 `RouteContracts.json`。随后，最后一条命令会扫描
-同一批 Feature，并在
+`update_route_contracts.swift` 会扫描当前 App 根目录内所有声明 `RouteModule` 的 Feature Swift
+Package，以及 App 自身的 Swift 源码，并生成或更新根目录唯一的 `RouteContracts.json`。随后，
+最后一条命令会扫描相同范围，并在
 `docs/route-catalog.html` 生成可搜索的本地路由目录：URL 模板、路径/查询参数、目标页面、
 Feature package 和展示方式都会列出。目录按 Feature package 分为独立表格，顶部提供带路由数
-量的快速定位入口。
+量的快速定位入口；App 自身的路由会显示在独立的 `App` 分区。
 
 当脚本放在 URLRouter 包内、但要扫描另一个 App 时，指定 App 根目录即可（契约和输出路径
 均相对于该根目录）：

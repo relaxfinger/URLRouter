@@ -12,9 +12,10 @@ needed.
 | `URLRouterRouteCommandPlugin` | A developer runs it intentionally | App-root `RouteContracts.json` and `docs/route-catalog.html` | Yes, after Xcode grants write access |
 
 Keep exactly one `RouteContracts.json` at the App root. It describes the
-public routes aggregated from every Feature Package; do not create one per
-Feature Package. Commit both this file and `docs/route-catalog.html` with the
-route change that produced them.
+public routes aggregated from every Feature Package **and App-owned Swift
+source**; do not create one per Feature Package. The catalog renders App-owned
+routes in an `App` section. Commit both this file and `docs/route-catalog.html`
+with the route change that produced them.
 
 ## Xcode: configure the Build Plugin
 

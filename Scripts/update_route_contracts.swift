@@ -74,21 +74,50 @@ func configuration() throws -> (root: URL, output: URL, check: Bool) {
     return (root, absoluteURL(output, relativeTo: root), check)
 }
 
-func featureSources(at root: URL) -> [FeatureSource] {
+func packageRoots(at root: URL) -> [URL] {
     guard let enumerator = fileManager.enumerator(at: root, includingPropertiesForKeys: [.isRegularFileKey, .isDirectoryKey]) else { return [] }
     let ignored: Set<String> = [".build", ".git", "DerivedData", "Pods", "Carthage", "SourcePackages"]
     var packages: [URL] = []
     for case let url as URL in enumerator {
         if ignored.contains(url.lastPathComponent) { enumerator.skipDescendants(); continue }
-        if url.lastPathComponent == "Package.swift" { packages.append(url.deletingLastPathComponent()) }
+        if url.lastPathComponent == "Package.swift" { packages.append(url.deletingLastPathComponent().standardizedFileURL) }
     }
-    return packages.flatMap { packageURL -> [FeatureSource] in
+    return packages
+}
+
+func appSource(at root: URL, excluding packageRoots: [URL]) -> String {
+    guard let enumerator = fileManager.enumerator(at: root, includingPropertiesForKeys: [.isRegularFileKey, .isDirectoryKey]) else { return "" }
+    let ignored: Set<String> = [".build", ".git", "DerivedData", "Pods", "Carthage", "SourcePackages", "Tests", "UITests"]
+    let nestedPackageRoots = Set(packageRoots.filter { $0 != root.standardizedFileURL }.map(\.path))
+    var sources: [String] = []
+    for case let url as URL in enumerator {
+        if ignored.contains(url.lastPathComponent) || nestedPackageRoots.contains(url.path) {
+            enumerator.skipDescendants()
+            continue
+        }
+        if url.pathExtension == "swift", let source = try? String(contentsOf: url, encoding: .utf8) {
+            sources.append(source)
+        }
+    }
+    return sources.joined(separator: "\n")
+}
+
+func featureSources(at root: URL) -> [FeatureSource] {
+    let packages = packageRoots(at: root)
+    let appOwnedSource = appSource(at: root, excluding: packages)
+    let appModuleIDs = Set(
+        matches(#"RouteModule\(\s*id:\s*\"([^\"]+)\""#, in: appOwnedSource).compactMap { $0.count > 1 ? $0[1] : nil }
+        + matches(#"(?:public\s+)?static\s+let\s+id\s*=\s*\"([^\"]+)\""#, in: appOwnedSource).compactMap { $0.count > 1 ? $0[1] : nil }
+    )
+    let appSources = appModuleIDs.map { FeatureSource(moduleID: $0, source: appOwnedSource) }
+    let packageSources = packages.filter { $0 != root.standardizedFileURL }.flatMap { packageURL -> [FeatureSource] in
         let sources = sourceFiles(in: packageURL.appendingPathComponent("Sources"))
             .compactMap { try? String(contentsOf: $0, encoding: .utf8) }.joined(separator: "\n")
         let literalIDs = matches(#"RouteModule\(\s*id:\s*\"([^\"]+)\""#, in: sources).compactMap { $0.count > 1 ? $0[1] : nil }
         let declaredIDs = matches(#"(?:public\s+)?static\s+let\s+id\s*=\s*\"([^\"]+)\""#, in: sources).compactMap { $0.count > 1 ? $0[1] : nil }
         return Array(Set(literalIDs + declaredIDs)).map { FeatureSource(moduleID: $0, source: sources) }
     }
+    return appSources + packageSources
 }
 
 func routeNames(in source: String, moduleID: String) -> [(name: String?, routeID: String)] {
@@ -152,7 +181,7 @@ func urlMetadata(in source: String) -> [String: (presentations: [String], queryI
 
 do {
     let config = try configuration()
-    let allAppSource = sourceFiles(in: config.root).compactMap { try? String(contentsOf: $0, encoding: .utf8) }.joined(separator: "\n")
+    let allAppSource = appSource(at: config.root, excluding: packageRoots(at: config.root))
     var routes: [RouteContract] = []
     var versions = Set<String>()
     var failures: [String] = []

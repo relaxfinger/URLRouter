@@ -103,6 +103,43 @@ func swiftFiles(in directory: URL) -> [URL] {
     return enumerator.compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
 }
 
+func packageRoots(at root: URL) -> [URL] {
+    let ignoredDirectories: Set<String> = [".build", ".git", "DerivedData", "Pods", "Carthage", "SourcePackages"]
+    guard let enumerator = fileManager.enumerator(at: root, includingPropertiesForKeys: [.isRegularFileKey, .isDirectoryKey]) else {
+        return []
+    }
+    var roots: [URL] = []
+    for case let url as URL in enumerator {
+        if ignoredDirectories.contains(url.lastPathComponent) {
+            enumerator.skipDescendants()
+            continue
+        }
+        if url.lastPathComponent == "Package.swift" {
+            roots.append(url.deletingLastPathComponent().standardizedFileURL)
+        }
+    }
+    return roots
+}
+
+func appSource(in root: URL, excluding packageRoots: [URL]) -> String {
+    let ignoredDirectories: Set<String> = [".build", ".git", "DerivedData", "Pods", "Carthage", "SourcePackages", "Tests", "UITests"]
+    let nestedPackageRoots = Set(packageRoots.filter { $0 != root.standardizedFileURL }.map(\.path))
+    guard let enumerator = fileManager.enumerator(at: root, includingPropertiesForKeys: [.isRegularFileKey, .isDirectoryKey]) else {
+        return ""
+    }
+    var sources: [String] = []
+    for case let url as URL in enumerator {
+        if ignoredDirectories.contains(url.lastPathComponent) || nestedPackageRoots.contains(url.path) {
+            enumerator.skipDescendants()
+            continue
+        }
+        if url.pathExtension == "swift", let source = try? contents(of: url.path) {
+            sources.append(source)
+        }
+    }
+    return sources.joined(separator: "\n")
+}
+
 func destinationMap(in source: String) -> [String: String] {
     var result: [String: String] = [:]
     // Handles `guard route.routeID == "detail" ... return AnyView(DetailView(...))`.
@@ -117,23 +154,7 @@ func destinationMap(in source: String) -> [String: String] {
 }
 
 func featurePackages(at root: URL) -> [FeaturePackage] {
-    let ignoredDirectories: Set<String> = [".build", ".git", "DerivedData", "Pods", "Carthage", "SourcePackages"]
-    guard let enumerator = fileManager.enumerator(at: root, includingPropertiesForKeys: [.isRegularFileKey, .isDirectoryKey]) else {
-        return []
-    }
-
-    var packageURLs: [URL] = []
-    for case let url as URL in enumerator {
-        if ignoredDirectories.contains(url.lastPathComponent) {
-            enumerator.skipDescendants()
-            continue
-        }
-        if url.lastPathComponent == "Package.swift" {
-            packageURLs.append(url.deletingLastPathComponent())
-        }
-    }
-
-    return packageURLs.compactMap { packageURL -> FeaturePackage? in
+    packageRoots(at: root).filter { $0 != root.standardizedFileURL }.compactMap { packageURL -> FeaturePackage? in
             let packageManifest = packageURL.appendingPathComponent("Package.swift")
             guard let packageText = try? contents(of: packageManifest.path) else { return nil }
             let name = matches(#"name:\s*\"([^\"]+)\""#, in: packageText).first?[1] ?? packageURL.lastPathComponent
@@ -185,8 +206,20 @@ do {
     guard manifest.schemaVersion == 1 else { throw NSError(domain: "RouteCatalog", code: 1, userInfo: [NSLocalizedDescriptionKey: "Unsupported route contract schema version."]) }
 
     let features = featurePackages(at: configuration.appRoot)
+    let appSourceText = appSource(in: configuration.appRoot, excluding: packageRoots(at: configuration.appRoot))
+    let appModuleIDs = Set(
+        matches(#"RouteModule\(\s*id:\s*\"([^\"]+)\""#, in: appSourceText).compactMap { $0.count > 1 ? $0[1] : nil }
+        + matches(#"(?:public\s+)?static\s+let\s+id\s*=\s*\"([^\"]+)\""#, in: appSourceText).compactMap { $0.count > 1 ? $0[1] : nil }
+    )
+    let appFeature = appModuleIDs.isEmpty ? nil : FeaturePackage(
+        name: "App",
+        path: configuration.appRoot.path,
+        moduleIDs: appModuleIDs,
+        destinations: destinationMap(in: appSourceText)
+    )
+    let catalogFeatures = features + (appFeature.map { [$0] } ?? [])
     let catalog = manifest.routes.map { route -> CatalogRoute in
-        let feature = features.first { $0.moduleIDs.contains(route.moduleID) }
+        let feature = catalogFeatures.first { $0.moduleIDs.contains(route.moduleID) }
         let destination = feature?.destinations[route.routeID] ?? "由 App 容器处理（Feature 未提供 destination View）"
         return CatalogRoute(contract: route, feature: feature, destination: destination)
     }
@@ -290,7 +323,7 @@ do {
 
     try fileManager.createDirectory(at: configuration.outputURL.deletingLastPathComponent(), withIntermediateDirectories: true)
     try page.write(to: configuration.outputURL, atomically: true, encoding: .utf8)
-    print("Generated \(configuration.outputURL.path) (\(catalog.count) routes across \(features.count) Feature packages).")
+    print("Generated \(configuration.outputURL.path) (\(catalog.count) routes across \(features.count) Feature packages\(appFeature == nil ? "" : " plus App")).")
 } catch {
     fputs("Route catalog generation failed: \(error.localizedDescription)\n", stderr)
     exit(1)
