@@ -41,7 +41,7 @@ Package。
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.5.0")
+    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.5.1")
 ]
 ```
 
@@ -192,6 +192,23 @@ swift /path/to/URLRouter/Scripts/generate_route_catalog.swift \
 同一个 App 根目录只能有一份 `RouteContracts.json`；Feature Package 不应各自维护副本。
 生成器会识别标准的 `RouteModule` 解析器、`ModuleRoute` 与 URL builder 写法；无法可靠推导
 路径或参数时会失败，而不会生成猜测的契约。
+
+### 远程 SPM 依赖的自动执行
+
+URLRouter 提供两个无需硬编码 checkout 路径的 Plugin Product。将远程 URLRouter 依赖添加到
+App 后，在 target 的 **Build Phases → Run Build Tool Plug-ins** 中启用
+`URLRouterRouteBuildPlugin`。每次编译会校验路由契约，并在 Derived Data 的插件工作目录生成
+可浏览的路由网页；它不会改写 App 仓库。
+
+新增或修改路由后，在 Xcode 选择 **File → Packages → URLRouterRouteCommandPlugin**，或在
+Swift Package App 根目录运行：
+
+```bash
+swift package plugin generate-urlrouter-contracts --allow-writing-to-package-directory
+```
+
+该命令会明确请求写入授权，再更新 App 根目录的 `RouteContracts.json` 和
+`docs/route-catalog.html`，供审查并提交 Git。
 
 核心库和 `RouterHost` 支持上述四个平台。macOS 的 SwiftUI 没有
 `fullScreenCover`，因此该展示方式会自动以 sheet 呈现。

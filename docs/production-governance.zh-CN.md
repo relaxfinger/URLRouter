@@ -149,26 +149,21 @@ swift Scripts/update_route_contracts.swift --check
 swift Scripts/validate_route_contract.swift RouteContracts.json
 ```
 
-不带 `--check` 执行更新脚本会写入最新目录。要让每次本地构建都检查契约，请在 Xcode 的
-**Compile Sources 之前**添加一个 **Run Script** Build Phase；将 URLRouter 路径替换为
-App 实际使用的位置：
+URLRouter 是远程依赖时，在 App target 的 **Build Phases → Run Build Tool Plug-ins** 启用
+`URLRouterRouteBuildPlugin`。Xcode 会把它当作 Package Product 自行解析，因此不需要
+checkout 路径或自定义 Run Script。每次构建都会校验目录，并在 Derived Data 的插件工作目录
+生成可检查的 HTML 网页。
+
+开发者明确要更新受版本控制文件时，在 Xcode 的 **File → Packages** 运行
+`URLRouterRouteCommandPlugin`。对于 Swift Package App，等价命令是：
 
 ```bash
-unset SDKROOT
-swift "${SRCROOT}/Vendor/URLRouter/Scripts/update_route_contracts.swift" \
-  --app-root "${SRCROOT}" \
-  --check
-swift "${SRCROOT}/Vendor/URLRouter/Scripts/generate_route_catalog.swift" \
-  --app-root "${SRCROOT}" \
-  --contracts RouteContracts.json \
-  --output docs/route-catalog.html
+swift package plugin generate-urlrouter-contracts --allow-writing-to-package-directory
 ```
 
-Build Phase 使用 `--check`，避免编译过程中改写受版本控制的文件。生成器会递归读取本地
-Feature Package，因此请将每个被扫描的源码目录列为 Build Phase 输入，或者对此受信任脚本
-设置 `ENABLE_USER_SCRIPT_SANDBOXING = NO`（Demo 使用后一种方式）。开发者在提交前主动
-运行不带该参数的更新命令；CI 同样运行检查命令。第二条命令会在契约检查通过后刷新
-本地可搜索的路由网页。
+该命令会明确请求写入授权，再更新 `RouteContracts.json` 和
+`docs/route-catalog.html`。CI 仍应执行上面的两条校验命令；Build Plugin 有意不改写
+受版本控制的文件。
 
 ## 一个实际的接入顺序
 

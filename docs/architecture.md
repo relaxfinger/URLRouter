@@ -114,7 +114,7 @@ from being “handled” without visibly switching tabs.
 For every public route change, update these items in one pull request:
 
 1. The Feature's parser and URL builder.
-2. Generate the App-root `RouteContracts.json` with `update_route_contracts.swift`.
+2. Run `URLRouterRouteCommandPlugin` to generate the App-root `RouteContracts.json` and catalog.
 3. Tests and caller documentation.
 4. Migration notes if an old URL remains in emails, websites, notifications, or
    released apps.
@@ -126,6 +126,12 @@ breaking change and plan it accordingly.
 `RouteContracts.json` belongs once, at the App root. It aggregates every
 Feature Package's public routes; do not distribute separate catalogs through
 Features. This lets the App validate and publish one coherent URL surface.
+
+For a remote URLRouter dependency, enable `URLRouterRouteBuildPlugin` in the
+App target's **Run Build Tool Plug-ins** phase. Xcode resolves the package and
+plugin without a checkout path; every build then validates the current route
+contract. Use `URLRouterRouteCommandPlugin` when a developer intentionally
+updates the tracked contract and HTML catalog.
 
 For rollout, remote policy, concurrency, and observability guidance, continue
 to [Production governance](production-governance.md).
