@@ -4,6 +4,16 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [2.5.5] - 2026-07-23
+
+### Changed
+
+- Extend route-contract inference for resolvers that alias
+  `link.pathComponents`, bind path parameters to local variables, and keep URL
+  builders in App-owned source rather than the Feature Package.
+- Match concrete sample URLs such as `/articles/42` to parameterized route
+  contracts such as `/articles/:id`.
+
 ## [2.5.4] - 2026-07-23
 
 ### Added
