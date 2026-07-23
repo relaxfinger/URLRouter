@@ -4,6 +4,13 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [2.5.7] - 2026-07-23
+
+### Changed
+
+- Make the generated route catalog English by default and add an in-page
+  English/Chinese language switch for its interface text.
+
 ## [2.5.6] - 2026-07-23
 
 ### Changed
