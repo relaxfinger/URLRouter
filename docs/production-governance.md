@@ -179,6 +179,10 @@ The command explicitly requests write access, then updates `RouteContracts.json`
 and `docs/route-catalog.html`. CI should continue to run the two validation
 commands above; a build plugin deliberately does not rewrite tracked files.
 
+Follow the [route-plugin workflow](route-plugin-workflow.md) for the exact
+Xcode clicks, expected outputs, SwiftPM command equivalent, and troubleshooting
+when a plugin is not listed.
+
 ## A practical rollout order
 
 1. Ship one versioned URL and its Feature resolver.

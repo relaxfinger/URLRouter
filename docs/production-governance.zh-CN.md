@@ -165,6 +165,9 @@ swift package plugin generate-urlrouter-contracts --allow-writing-to-package-dir
 `docs/route-catalog.html`。CI 仍应执行上面的两条校验命令；Build Plugin 有意不改写
 受版本控制的文件。
 
+Xcode 的精确点击步骤、预期输出、SwiftPM 等价命令及插件没有出现在列表时的排查，见
+[路由插件工作流](route-plugin-workflow.zh-CN.md)。
+
 ## 一个实际的接入顺序
 
 1. 发布一条带版本 URL 和对应 Feature 解析器。

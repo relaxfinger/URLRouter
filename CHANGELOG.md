@@ -4,6 +4,15 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [2.5.2] - 2026-07-23
+
+### Changed
+
+- Group the generated route catalog by Feature Package, with per-Feature route
+  tables, route counts, quick navigation, and Feature-aware search.
+- Document the complete Xcode and SwiftPM workflow for the URLRouter build and
+  command plugins, including expected outputs and troubleshooting.
+
 ## [2.5.1] - 2026-07-23
 
 ### Added

@@ -133,5 +133,8 @@ plugin without a checkout path; every build then validates the current route
 contract. Use `URLRouterRouteCommandPlugin` when a developer intentionally
 updates the tracked contract and HTML catalog.
 
+See the [route-plugin workflow](route-plugin-workflow.md) for the concrete
+Xcode and SwiftPM procedure.
+
 For rollout, remote policy, concurrency, and observability guidance, continue
 to [Production governance](production-governance.md).

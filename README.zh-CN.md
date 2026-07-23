@@ -41,7 +41,7 @@ Package。
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.5.1")
+    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.5.2")
 ]
 ```
 
@@ -177,7 +177,8 @@ swift Scripts/generate_route_catalog.swift
 Package，并生成或更新根目录唯一的 `RouteContracts.json`。随后，最后一条命令会扫描
 同一批 Feature，并在
 `docs/route-catalog.html` 生成可搜索的本地路由目录：URL 模板、路径/查询参数、目标页面、
-Feature package 和展示方式都会列出。
+Feature package 和展示方式都会列出。目录按 Feature package 分为独立表格，顶部提供带路由数
+量的快速定位入口。
 
 当脚本放在 URLRouter 包内、但要扫描另一个 App 时，指定 App 根目录即可（契约和输出路径
 均相对于该根目录）：
@@ -209,6 +210,9 @@ swift package plugin generate-urlrouter-contracts --allow-writing-to-package-dir
 
 该命令会明确请求写入授权，再更新 App 根目录的 `RouteContracts.json` 和
 `docs/route-catalog.html`，供审查并提交 Git。
+
+完整的 Xcode 逐步配置（如何添加 Build Plugin、执行 Command Plugin、审查输出，以及插件
+未出现在列表时如何排查）见[路由插件工作流](docs/route-plugin-workflow.zh-CN.md)。
 
 核心库和 `RouterHost` 支持上述四个平台。macOS 的 SwiftUI 没有
 `fullScreenCover`，因此该展示方式会自动以 sheet 呈现。
