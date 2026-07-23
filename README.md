@@ -42,7 +42,7 @@ Add `URLRouter` to the App target and to any Feature Package that declares a
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.5.3")
+    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.5.4")
 ]
 ```
 
@@ -218,7 +218,9 @@ swift package plugin generate-urlrouter-contracts --allow-writing-to-package-dir
 ```
 
 The command explicitly requests write access and then updates the App-root
-`RouteContracts.json` and `docs/route-catalog.html` for review and commit.
+`RouteContracts.json` and `docs/route-catalog.html` for review and commit. The
+catalog script creates a missing initial contract automatically; a sandboxed
+SwiftPM Build Plugin remains validation-only.
 
 For the full, step-by-step Xcode setup (including how to add the Build Plugin,
 run the Command Plugin, review its output, and fix a missing plugin in the

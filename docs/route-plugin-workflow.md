@@ -25,6 +25,12 @@ URLRouter repository URL, select version `2.5.1` or later, and add the
 `URLRouter` library product to the App target. The plugin will not be
 selectable if URLRouter is only a transitive dependency of another package.
 
+`generate_route_catalog.swift` creates `RouteContracts.json` automatically if
+it is missing. The Xcode Run Script integration can therefore generate both
+tracked files on its first build. A SwiftPM Build Plugin is intentionally
+validation-only and cannot write tracked files from its sandbox; for that
+integration, run the Command Plugin once to bootstrap the files.
+
 1. In the Project navigator, select the blue project file.
 2. Under **TARGETS**, select the App target that owns the Feature Packages.
 3. Open **Build Phases**.

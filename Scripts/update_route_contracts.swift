@@ -208,6 +208,13 @@ do {
     let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
     let data = try encoder.encode(manifest)
     if config.check {
+        guard fileManager.fileExists(atPath: config.output.path) else {
+            throw NSError(
+                domain: "RouteContracts",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "\(config.output.path) does not exist. Run URLRouterRouteCommandPlugin in Xcode, or run update_route_contracts.swift without --check, to create the initial contract."]
+            )
+        }
         let current = try Data(contentsOf: config.output)
         guard current == data else { throw NSError(domain: "RouteContracts", code: 1, userInfo: [NSLocalizedDescriptionKey: "\(config.output.path) is out of date. Run update_route_contracts.swift before building."]) }
         print("Route contracts are up to date (\(routes.count) routes).")

@@ -303,7 +303,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "unset SDKROOT\nswift \"${SRCROOT}/Scripts/update_route_contracts.swift\" --app-root \"${SRCROOT}\" --check\nswift \"${SRCROOT}/Scripts/generate_route_catalog.swift\" --app-root \"${SRCROOT}\" --contracts RouteContracts.json --output docs/route-catalog.html\n";
+			shellScript = "unset SDKROOT\nswift \"${SRCROOT}/Scripts/update_route_contracts.swift\" --app-root \"${SRCROOT}\"\nswift \"${SRCROOT}/Scripts/generate_route_catalog.swift\" --app-root \"${SRCROOT}\" --contracts RouteContracts.json --output docs/route-catalog.html\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
