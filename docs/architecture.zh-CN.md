@@ -119,5 +119,7 @@ URLRouter 作为远程依赖时，在 App target 的 **Run Build Tool Plug-ins**
 路由契约；开发者需要更新受版本控制的 JSON 与 HTML 网页时，再主动运行
 `URLRouterRouteCommandPlugin`。
 
+具体的 Xcode 与 SwiftPM 操作见[路由插件工作流](route-plugin-workflow.zh-CN.md)。
+
 关于灰度、远程策略、并发与可观测性，请继续阅读
 [生产治理](production-governance.zh-CN.md)。

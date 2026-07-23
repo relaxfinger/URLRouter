@@ -42,7 +42,7 @@ Add `URLRouter` to the App target and to any Feature Package that declares a
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.5.1")
+    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.5.2")
 ]
 ```
 
@@ -195,6 +195,10 @@ swift /path/to/URLRouter/Scripts/generate_route_catalog.swift \
   --output docs/route-catalog.html
 ```
 
+The generated catalog is searchable and splits routes into one table per
+Feature package. Its top navigator shows each Feature and its route count for
+quick browsing.
+
 ### Automate remote SPM dependencies
 
 URLRouter ships two Plugin Products, so an App never needs to record a remote
@@ -214,6 +218,10 @@ swift package plugin generate-urlrouter-contracts --allow-writing-to-package-dir
 
 The command explicitly requests write access and then updates the App-root
 `RouteContracts.json` and `docs/route-catalog.html` for review and commit.
+
+For the full, step-by-step Xcode setup (including how to add the Build Plugin,
+run the Command Plugin, review its output, and fix a missing plugin in the
+picker), see [Route-plugin workflow](docs/route-plugin-workflow.md).
 
 The core library and `RouterHost` support all four listed Apple platforms. On
 macOS, SwiftUI presents a `fullScreenCover` route as a sheet because macOS does

@@ -167,6 +167,17 @@ func parameters(for route: RouteContract) -> String {
     return (pathParameters + queryParameters).joined(separator: "<br>")
 }
 
+func featureName(for item: CatalogRoute) -> String {
+    item.feature?.name ?? "未找到对应 Feature package"
+}
+
+func anchorID(for featureName: String) -> String {
+    let slug = featureName.lowercased().map { character -> String in
+        character.isLetter || character.isNumber ? String(character) : "-"
+    }.joined()
+    return "feature-" + slug.replacingOccurrences(of: #"-+"#, with: "-", options: .regularExpression)
+}
+
 do {
     let configuration = try configuration(arguments: Array(CommandLine.arguments.dropFirst()))
     let manifestData = try Data(contentsOf: configuration.contractsURL)
@@ -180,17 +191,45 @@ do {
         return CatalogRoute(contract: route, feature: feature, destination: destination)
     }
 
-    let rows = catalog.map { item in
-        let route = item.contract
+    let groupedCatalog = Dictionary(grouping: catalog, by: featureName(for:))
+    let orderedFeatureNames = groupedCatalog.keys.sorted { left, right in
+        if left == "未找到对应 Feature package" { return false }
+        if right == "未找到对应 Feature package" { return true }
+        return left.localizedStandardCompare(right) == .orderedAscending
+    }
+
+    let featureNavigation = orderedFeatureNames.compactMap { name -> String? in
+        guard let routes = groupedCatalog[name] else { return nil }
+        return "<a class=\"feature-link\" href=\"#\(html(anchorID(for: name)))\"><span>\(html(name))</span><b>\(routes.count)</b></a>"
+    }.joined(separator: "\n        ")
+
+    let sections = orderedFeatureNames.compactMap { name -> String? in
+        guard let routes = groupedCatalog[name] else { return nil }
+        let rows = routes.sorted { $0.contract.pathTemplate < $1.contract.pathTemplate }.map { item in
+            let route = item.contract
+            return """
+            <tr>
+              <td><code>\(html(sampleURL(for: route, versions: manifest.supportedVersions)))</code></td>
+              <td>\(parameters(for: route))</td>
+              <td><code>\(html(item.destination))</code></td>
+              <td><code>\(html(route.moduleID))/\(html(route.routeID))</code></td>
+              <td><span class=\"presentation\">\(html(route.presentations.joined(separator: "、")))</span></td>
+            </tr>
+            """
+        }.joined(separator: "\n")
         return """
-        <tr>
-          <td><code>\(html(sampleURL(for: route, versions: manifest.supportedVersions)))</code></td>
-          <td>\(parameters(for: route))</td>
-          <td><code>\(html(item.destination))</code></td>
-          <td>\(html(item.feature?.name ?? "未找到对应 Feature package"))</td>
-          <td><code>\(html(route.moduleID))/\(html(route.routeID))</code></td>
-          <td>\(html(route.presentations.joined(separator: "、")))</td>
-        </tr>
+        <section class=\"feature-section\" id=\"\(html(anchorID(for: name)))\" data-feature=\"\(html(name))\">
+          <div class=\"feature-heading\">
+            <div><p class=\"eyebrow\">FEATURE PACKAGE</p><h2>\(html(name))</h2></div>
+            <span class=\"route-count\">\(routes.count) 条路由</span>
+          </div>
+          <div class=\"table-wrap\">
+            <table>
+              <thead><tr><th>URL 模板</th><th>参数</th><th>目标页面</th><th>路由 ID</th><th>展示方式</th></tr></thead>
+              <tbody>\(rows)</tbody>
+            </table>
+          </div>
+        </section>
         """
     }.joined(separator: "\n")
 
@@ -203,27 +242,47 @@ do {
       <title>URLRouter 路由目录</title>
       <style>
         :root { color-scheme: light dark; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-        body { margin: 40px auto; max-width: 1440px; padding: 0 24px; line-height: 1.5; }
-        h1 { margin-bottom: 4px; } .meta { color: #6b7280; margin-top: 0; }
-        input { box-sizing: border-box; width: 100%; padding: 11px; margin: 20px 0; font: inherit; border: 1px solid #9ca3af; border-radius: 8px; }
-        table { width: 100%; border-collapse: collapse; } th, td { padding: 12px; text-align: left; vertical-align: top; border-bottom: 1px solid #d1d5db; }
-        th { position: sticky; top: 0; background: Canvas; } code { font-size: .9em; word-break: break-word; }
-        @media (max-width: 800px) { body { margin-top: 20px; padding: 0 12px; } table { font-size: .9rem; } th, td { min-width: 130px; } }
+        * { box-sizing: border-box; } body { margin: 0; background: Canvas; color: CanvasText; line-height: 1.5; }
+        header { padding: 48px max(24px, calc((100vw - 1320px) / 2)); border-bottom: 1px solid color-mix(in srgb, CanvasText 16%, transparent); background: color-mix(in srgb, AccentColor 7%, Canvas); }
+        h1 { margin: 0 0 4px; font-size: clamp(2rem, 5vw, 3.2rem); letter-spacing: -.04em; } .meta { color: color-mix(in srgb, CanvasText 60%, transparent); margin: 0; }
+        main { max-width: 1320px; margin: 0 auto; padding: 28px 24px 72px; }
+        .search { position: sticky; top: 0; z-index: 2; padding: 16px 0; background: Canvas; } input { width: 100%; padding: 13px 16px; font: inherit; border: 1px solid color-mix(in srgb, CanvasText 28%, transparent); border-radius: 10px; background: Canvas; color: CanvasText; box-shadow: 0 4px 18px color-mix(in srgb, CanvasText 7%, transparent); }
+        .feature-nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 30px; } .feature-link { display: inline-flex; gap: 9px; align-items: center; padding: 7px 10px 7px 12px; color: inherit; text-decoration: none; border: 1px solid color-mix(in srgb, CanvasText 17%, transparent); border-radius: 999px; } .feature-link:hover { border-color: AccentColor; } .feature-link b { min-width: 21px; padding: 1px 6px; text-align: center; border-radius: 99px; background: color-mix(in srgb, AccentColor 18%, transparent); font-size: .8em; }
+        .feature-section { scroll-margin-top: 84px; margin: 0 0 30px; padding: 22px; border: 1px solid color-mix(in srgb, CanvasText 14%, transparent); border-radius: 16px; background: color-mix(in srgb, CanvasText 2%, Canvas); box-shadow: 0 10px 30px color-mix(in srgb, CanvasText 4%, transparent); } .feature-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 18px; } h2 { margin: 0; font-size: 1.35rem; } .eyebrow { margin: 0 0 3px; font-size: .72rem; letter-spacing: .12em; color: color-mix(in srgb, CanvasText 55%, transparent); } .route-count, .presentation { display: inline-block; padding: 3px 8px; border-radius: 6px; background: color-mix(in srgb, AccentColor 15%, transparent); font-size: .84rem; white-space: nowrap; }
+        .table-wrap { overflow-x: auto; } table { width: 100%; min-width: 850px; border-collapse: collapse; } th, td { padding: 12px; text-align: left; vertical-align: top; border-bottom: 1px solid color-mix(in srgb, CanvasText 12%, transparent); } th { font-size: .78rem; letter-spacing: .04em; color: color-mix(in srgb, CanvasText 62%, transparent); } tr:last-child td { border-bottom: 0; } code { font-size: .88em; word-break: break-word; } .empty { display: none; margin: 32px 0; padding: 24px; text-align: center; border: 1px dashed color-mix(in srgb, CanvasText 30%, transparent); border-radius: 12px; color: color-mix(in srgb, CanvasText 65%, transparent); }
+        @media (max-width: 800px) { header { padding-top: 30px; padding-bottom: 30px; } main { padding: 18px 12px 48px; } .feature-section { padding: 16px; } .feature-heading { align-items: center; } }
       </style>
     </head>
     <body>
-      <h1>URLRouter 路由目录</h1>
-      <p class="meta">由 <code>\(html(configuration.contractsURL.lastPathComponent))</code> 与 App 内的 Feature Package 自动生成 · 共 \(catalog.count) 条路由</p>
-      <input id="filter" type="search" placeholder="筛选 URL、参数、页面或 Feature package…" autofocus>
-      <table>
-        <thead><tr><th>URL 模板</th><th>参数</th><th>目标页面</th><th>Feature package</th><th>路由 ID</th><th>展示方式</th></tr></thead>
-        <tbody>\(rows)</tbody>
-      </table>
+      <header>
+        <h1>URLRouter 路由目录</h1>
+        <p class="meta">由 <code>\(html(configuration.contractsURL.lastPathComponent))</code> 与 App 内的 Feature Package 自动生成 · 共 \(catalog.count) 条路由，分属 \(orderedFeatureNames.count) 个 Feature</p>
+      </header>
+      <main>
+        <div class="search"><input id="filter" type="search" placeholder="筛选 Feature、URL、参数、页面或路由 ID…" autofocus></div>
+        <nav class="feature-nav" aria-label="Feature package 快速定位">\(featureNavigation)</nav>
+        <p id="empty" class="empty">没有匹配的路由或 Feature package。</p>
+        \(sections)
+      </main>
       <script>
         const filter = document.querySelector('#filter');
-        filter.addEventListener('input', () => document.querySelectorAll('tbody tr').forEach(row => {
-          row.hidden = !row.innerText.toLowerCase().includes(filter.value.toLowerCase());
-        }));
+        const sections = [...document.querySelectorAll('.feature-section')];
+        const links = [...document.querySelectorAll('.feature-link')];
+        const empty = document.querySelector('#empty');
+        filter.addEventListener('input', () => {
+          const query = filter.value.trim().toLowerCase();
+          let visibleSections = 0;
+          sections.forEach(section => {
+            const featureMatches = section.dataset.feature.toLowerCase().includes(query);
+            const rows = [...section.querySelectorAll('tbody tr')];
+            let visibleRows = 0;
+            rows.forEach(row => { row.hidden = !featureMatches && !row.innerText.toLowerCase().includes(query); if (!row.hidden) visibleRows += 1; });
+            section.hidden = visibleRows === 0;
+            if (!section.hidden) visibleSections += 1;
+          });
+          links.forEach(link => { link.hidden = document.querySelector(link.getAttribute('href')).hidden; });
+          empty.style.display = visibleSections ? 'none' : 'block';
+        });
       </script>
     </body>
     </html>

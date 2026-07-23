@@ -8,6 +8,7 @@ Use the guide that matches the job in front of you:
 | --- | --- |
 | [Getting started](getting-started.md) | install the package, create a Feature route, host it in SwiftUI, and add Universal Links |
 | [Architecture](architecture.md) | decide package ownership, URL shape, public contracts, and App-shell responsibilities |
+| [Route-plugin workflow](route-plugin-workflow.md) | configure the Xcode Build Plugin and generate the reviewed contract and catalog |
 | [Production governance](production-governance.md) | add remote restrictions, a circuit breaker, concurrent-route coordination, telemetry, and contract checks |
 | [ADR 0001](adr/0001-public-compatibility-gates.md) | understand the API and route-contract compatibility gates in pull requests |
 

@@ -8,6 +8,7 @@
 | --- | --- |
 | [接入指南](getting-started.zh-CN.md) | 安装 Package、创建 Feature 路由、接入 SwiftUI 和 Universal Link |
 | [架构说明](architecture.zh-CN.md) | 设计 Package 边界、URL 形状、公开契约和 App 壳层职责 |
+| [路由插件工作流](route-plugin-workflow.zh-CN.md) | 配置 Xcode Build Plugin，并生成需要审查的契约与网页目录 |
 | [生产治理](production-governance.zh-CN.md) | 接入远程限制、紧急熔断、并发协调、遥测和契约检查 |
 | [ADR 0001](adr/0001-public-compatibility-gates.md) | 了解 PR 中的公开 API 与路由契约兼容性门禁 |
 
