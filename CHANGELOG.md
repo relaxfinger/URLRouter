@@ -4,6 +4,16 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [2.5.1] - 2026-07-23
+
+### Added
+
+- Added remote Swift Package Manager route plugins: a build plugin for Xcode build-time contract validation and a command plugin for explicitly regenerating the tracked route contract and catalog.
+
+### Changed
+
+- Updated English and Chinese route-contract documentation to use the remote-SwiftPM plugin workflow without hard-coded checkout paths.
+
 ## [2.5.0] - 2026-07-20
 
 ### Added

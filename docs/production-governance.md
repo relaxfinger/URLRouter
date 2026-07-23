@@ -161,29 +161,23 @@ swift Scripts/update_route_contracts.swift --check
 swift Scripts/validate_route_contract.swift RouteContracts.json
 ```
 
-Run the update command without `--check` to write the current catalog. Add the
-following Xcode **Run Script** build phase before compiling sources to make
-every local build reject an out-of-date catalog. Replace the URLRouter path
-with the location used by your App:
+For a remote URLRouter dependency, enable `URLRouterRouteBuildPlugin` in the
+App target's **Build Phases → Run Build Tool Plug-ins**. Xcode resolves it as a
+package product, so no checkout path or custom Run Script is required. Every
+build validates the catalog and writes an inspection copy of the HTML catalog
+to the plugin work directory under Derived Data.
+
+When a developer intends to update tracked files, run
+`URLRouterRouteCommandPlugin` from **File → Packages** in Xcode. For a Swift
+Package App, the equivalent is:
 
 ```bash
-unset SDKROOT
-swift "${SRCROOT}/Vendor/URLRouter/Scripts/update_route_contracts.swift" \
-  --app-root "${SRCROOT}" \
-  --check
-swift "${SRCROOT}/Vendor/URLRouter/Scripts/generate_route_catalog.swift" \
-  --app-root "${SRCROOT}" \
-  --contracts RouteContracts.json \
-  --output docs/route-catalog.html
+swift package plugin generate-urlrouter-contracts --allow-writing-to-package-directory
 ```
 
-Use `--check` in a build phase so the build does not modify tracked source
-files. Because the generator recursively reads local Feature Packages, either
-list every scanned source directory as a build-phase input or set
-`ENABLE_USER_SCRIPT_SANDBOXING = NO` for this trusted script (the demo uses the
-latter). Run the updating form deliberately before committing; use the same
-check command in CI. The second command refreshes the local, searchable route
-catalog after every successful contract check.
+The command explicitly requests write access, then updates `RouteContracts.json`
+and `docs/route-catalog.html`. CI should continue to run the two validation
+commands above; a build plugin deliberately does not rewrite tracked files.
 
 ## A practical rollout order
 

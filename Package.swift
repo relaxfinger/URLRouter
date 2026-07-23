@@ -20,6 +20,14 @@ let package = Package(
         .library(
             name: "URLRouterPolicyProvider",
             targets: ["URLRouterPolicyProvider"]
+        ),
+        .plugin(
+            name: "URLRouterRouteBuildPlugin",
+            targets: ["URLRouterRouteBuildPlugin"]
+        ),
+        .plugin(
+            name: "URLRouterRouteCommandPlugin",
+            targets: ["URLRouterRouteCommandPlugin"]
         )
     ],
     dependencies: [],
@@ -31,6 +39,17 @@ let package = Package(
         .target(
             name: "URLRouterPolicyProvider",
             dependencies: ["URLRouter"]
+        ),
+        .plugin(
+            name: "URLRouterRouteBuildPlugin",
+            capability: .buildTool()
+        ),
+        .plugin(
+            name: "URLRouterRouteCommandPlugin",
+            capability: .command(
+                intent: .custom(verb: "generate-urlrouter-contracts", description: "Generate URLRouter route contracts and catalog."),
+                permissions: [.writeToPackageDirectory(reason: "Generate RouteContracts.json and the route catalog.")]
+            )
         ),
         .testTarget(
             name: "URLRouterTests",
