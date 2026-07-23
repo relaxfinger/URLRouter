@@ -139,20 +139,32 @@ func paths(in source: String, routeNames: [(name: String?, routeID: String)]) ->
         let components = matches(#"\"([^\"]+)\""#, in: match[1]).compactMap { $0.count > 1 ? $0[1] : nil }
         result[routeID] = components.isEmpty ? "/" : "/" + components.joined(separator: "/")
     }
-    // Standard guard resolver. Parameters are inferred from `parameters: ["id": link.pathComponents[1]]`.
+    // Standard guard resolver. Support a direct `link.pathComponents` expression
+    // as well as the common `let path = link.pathComponents` local alias.
     for route in routeNames where result[route.routeID] == nil {
         guard let occurrence = source.range(of: "routeID: \"\(route.routeID)\"") else { continue }
         let start = source.index(occurrence.lowerBound, offsetBy: -min(800, source.distance(from: source.startIndex, to: occurrence.lowerBound)))
         let end = source.index(occurrence.upperBound, offsetBy: min(400, source.distance(from: occurrence.upperBound, to: source.endIndex)))
         let context = String(source[start..<end])
-        guard let countMatch = matches(#"link\.pathComponents\.count\s*==\s*(\d+)"#, in: context).last,
+        let localPathAlias = matches(#"(?:let|var)\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*link\.pathComponents"#, in: context).last?.dropFirst().first
+        let pathExpression = localPathAlias ?? "link.pathComponents"
+        let escapedPathExpression = NSRegularExpression.escapedPattern(for: pathExpression)
+        guard let countMatch = matches(escapedPathExpression + #"\.count\s*==\s*(\d+)"#, in: context).last,
               countMatch.count > 1, let count = Int(countMatch[1]) else { continue }
         var components = Array(repeating: "{unknown}", count: count)
-        for literal in matches(#"link\.pathComponents\[(\d+)\]\s*==\s*\"([^\"]+)\""#, in: context) where literal.count >= 3 {
+        for literal in matches(escapedPathExpression + #"\[(\d+)\]\s*==\s*\"([^\"]+)\""#, in: context) where literal.count >= 3 {
             if let index = Int(literal[1]), index < count { components[index] = literal[2] }
         }
-        for parameter in matches(#"\"([^\"]+)\"\s*:\s*link\.pathComponents\[(\d+)\]"#, in: context) where parameter.count >= 3 {
+        for parameter in matches(#"\"([^\"]+)\"\s*:\s*"# + escapedPathExpression + #"\[(\d+)\]"#, in: context) where parameter.count >= 3 {
             if let index = Int(parameter[2]), index < count { components[index] = ":\(parameter[1])" }
+        }
+        // Also handle `let id = path[1]` followed by `parameters: ["id": id]`.
+        var aliases: [String: Int] = [:]
+        for alias in matches(#"(?:let|var)\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*"# + escapedPathExpression + #"\[(\d+)\]"#, in: context) where alias.count >= 3 {
+            if let index = Int(alias[2]), index < count { aliases[alias[1]] = index }
+        }
+        for parameter in matches(#"\"([^\"]+)\"\s*:\s*([A-Za-z_][A-Za-z0-9_]*)"#, in: context) where parameter.count >= 3 {
+            if let index = aliases[parameter[2]] { components[index] = ":\(parameter[1])" }
         }
         guard !components.contains("{unknown}") else { continue }
         result[route.routeID] = "/" + components.joined(separator: "/")
@@ -179,9 +191,28 @@ func urlMetadata(in source: String) -> [String: (presentations: [String], queryI
     return result
 }
 
+func pathMatches(template: String, concretePath: String) -> Bool {
+    let templateComponents = template.split(separator: "/", omittingEmptySubsequences: true)
+    let concreteComponents = concretePath.split(separator: "/", omittingEmptySubsequences: true)
+    guard templateComponents.count == concreteComponents.count else { return false }
+    return zip(templateComponents, concreteComponents).allSatisfy { templateComponent, concreteComponent in
+        templateComponent.hasPrefix(":") || templateComponent == concreteComponent
+    }
+}
+
+func urlMetadata(for routePath: String, in metadata: [String: (presentations: [String], queryItems: [String], versions: [String])]) -> (presentations: [String], queryItems: [String], versions: [String])? {
+    if let exact = metadata[routePath] { return exact }
+    let matches = metadata.filter { pathMatches(template: routePath, concretePath: $0.key) }
+    // A concrete sample URL such as `/articles/42` can document `/articles/:id`,
+    // but do not choose between multiple incompatible URL-builder samples.
+    guard matches.count == 1 else { return nil }
+    return matches.first?.value
+}
+
 do {
     let config = try configuration()
     let allAppSource = appSource(at: config.root, excluding: packageRoots(at: config.root))
+    let appURLMetadata = urlMetadata(in: allAppSource)
     var routes: [RouteContract] = []
     var versions = Set<String>()
     var failures: [String] = []
@@ -189,10 +220,12 @@ do {
     for feature in featureSources(at: config.root) {
         let names = routeNames(in: feature.source, moduleID: feature.moduleID)
         let routePaths = paths(in: feature.source, routeNames: names)
-        let metadata = urlMetadata(in: feature.source)
+        // Apps commonly keep public links beside their UI while the resolver
+        // lives in a Feature Package. Consider both locations.
+        let metadata = appURLMetadata.merging(urlMetadata(in: feature.source)) { _, featureValue in featureValue }
         for route in names {
             guard let path = routePaths[route.routeID] else { failures.append("Could not infer path for \(feature.moduleID)/\(route.routeID)."); continue }
-            var details = metadata[path]
+            var details = urlMetadata(for: path, in: metadata)
             // Tab routes commonly have no URL builder; infer them from an App-shell TabView tag.
             if details == nil, let name = route.name,
                allAppSource.contains(".tag(Optional(") && allAppSource.contains(".\(name))") {
