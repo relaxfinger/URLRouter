@@ -10,9 +10,9 @@
 | `URLRouterRouteBuildPlugin` | 每次 Xcode 编译 | Derived Data 中临时的 `route-catalog.html` | 否 |
 | `URLRouterRouteCommandPlugin` | 开发者明确执行时 | App 根目录的 `RouteContracts.json` 与 `docs/route-catalog.html` | 会，且必须先授权写入 |
 
-一个 App 根目录只保留一份 `RouteContracts.json`。它汇总所有 Feature Package 的公开路由，
-而不是每个 Feature Package 各维护一份。路由变更时，应把此文件和
-`docs/route-catalog.html` 一起提交。
+一个 App 根目录只保留一份 `RouteContracts.json`。它汇总所有 Feature Package 和 App 自身
+Swift 源码中的公开路由，而不是每个 Feature Package 各维护一份。网页目录会把 App 自身的
+路由放在独立的 `App` 分区。路由变更时，应把此文件和 `docs/route-catalog.html` 一起提交。
 
 ## 在 Xcode 配置 Build Plugin
 
