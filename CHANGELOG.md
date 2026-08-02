@@ -4,6 +4,22 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [2.5.8] - 2026-08-02
+
+### Changed
+
+- Extend route-contract inference for common App-owned route styles, including
+  Swift shorthand switch returns, inline `ModuleRoute` switch returns,
+  `guard case` path checks, `URLComponents`-style `makeURL` helpers, and
+  duplicate route IDs across different modules.
+- Stabilize generated route ordering so `--check` does not fail on equivalent
+  manifests.
+
+### Added
+
+- Add script-level route-contract generator tests covering realistic App route
+  source patterns.
+
 ## [2.5.7] - 2026-07-23
 
 ### Changed
