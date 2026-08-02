@@ -132,6 +132,8 @@ final class RouteContractGeneratorTests: XCTestCase {
             }
 
             private static func makeURL(path: String, presentation: ModulePresentationStyle, queryItems: [URLQueryItem] = []) -> URL {
+                var components = URLComponents()
+                components.host = "bandup.app"
                 URL(string: "https://example.com")!
             }
         }
@@ -160,6 +162,50 @@ final class RouteContractGeneratorTests: XCTestCase {
         XCTAssertEqual(route("profile", "paywall", in: manifest)?.presentations, ["push"])
 
         try runGenerator(appRoot: appRoot, check: true)
+
+        let catalogURL = appRoot.appendingPathComponent("docs/route-catalog.html")
+        try runCatalogGenerator(appRoot: appRoot, output: catalogURL)
+        let catalog = try String(contentsOf: catalogURL, encoding: .utf8)
+        XCTAssertTrue(catalog.contains("https://bandup.app/history/attempt?id={id}&amp;presentation=push&amp;version=1"))
+        XCTAssertFalse(catalog.contains("https://example.com/history/attempt"))
+    }
+
+    func testCatalogHostArgumentOverridesSourceInference() throws {
+        let appRoot = try makeTemporaryApp(source: """
+        struct ModuleRoute {
+            init(moduleID: String, routeID: String) {}
+        }
+
+        struct RouteModule {
+            init(id: String, resolver: (Link) -> ModuleRoute?) {}
+        }
+
+        struct Link {
+            let pathComponents: [String]
+        }
+
+        enum AppRoutes {
+            static let profile = ModuleRoute(moduleID: "profile", routeID: "home")
+            static let module = RouteModule(id: "profile") { link in
+                switch link.pathComponents {
+                case ["profile"]: return profile
+                default: return nil
+                }
+            }
+        }
+
+        enum AppLinks {
+            static let profile = URL(string: "https://wrong.example/profile?presentation=tab&version=1")!
+        }
+        """)
+
+        try runGenerator(appRoot: appRoot)
+        let catalogURL = appRoot.appendingPathComponent("docs/custom-catalog.html")
+        try runCatalogGenerator(appRoot: appRoot, output: catalogURL, host: "docs.bandup.app")
+        let catalog = try String(contentsOf: catalogURL, encoding: .utf8)
+
+        XCTAssertTrue(catalog.contains("https://docs.bandup.app/profile?presentation=tab&amp;version=1"))
+        XCTAssertFalse(catalog.contains("wrong.example"))
     }
 
     private func makeTemporaryApp(source: String) throws -> URL {
@@ -173,11 +219,7 @@ final class RouteContractGeneratorTests: XCTestCase {
     }
 
     private func runGenerator(appRoot: URL, check: Bool = false) throws {
-        let packageRoot = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        let script = packageRoot.appendingPathComponent("Scripts/update_route_contracts.swift")
+        let script = packageRoot().appendingPathComponent("Scripts/update_route_contracts.swift")
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = ["swift", script.path, "--app-root", appRoot.path] + (check ? ["--check"] : [])
@@ -195,6 +237,41 @@ final class RouteContractGeneratorTests: XCTestCase {
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             XCTFail(String(data: data, encoding: .utf8) ?? "Generator failed.")
         }
+    }
+
+    private func runCatalogGenerator(appRoot: URL, output: URL, host: String? = nil) throws {
+        let script = packageRoot().appendingPathComponent("Scripts/generate_route_catalog.swift")
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = [
+            "swift",
+            script.path,
+            "--app-root",
+            appRoot.path,
+            "--output",
+            output.path
+        ] + (host.map { ["--host", $0] } ?? [])
+        var environment = ProcessInfo.processInfo.environment
+        environment.removeValue(forKey: "SDKROOT")
+        process.environment = environment
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+        try process.run()
+        process.waitUntilExit()
+
+        if process.terminationStatus != 0 {
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            XCTFail(String(data: data, encoding: .utf8) ?? "Catalog generator failed.")
+        }
+    }
+
+    private func packageRoot() -> URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
     }
 
     private func readManifest(at url: URL) throws -> Manifest {
