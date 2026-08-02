@@ -33,6 +33,7 @@ struct Configuration {
     let appRoot: URL
     let contractsURL: URL
     let outputURL: URL
+    let host: String?
 }
 
 func absoluteURL(_ path: String, relativeTo base: URL) -> URL {
@@ -44,15 +45,16 @@ func configuration(arguments: [String]) throws -> Configuration {
     var appRoot = workingDirectory
     var contractsPath = "RouteContracts.json"
     var outputPath = "docs/route-catalog.html"
+    var host: String?
     var index = 0
 
     while index < arguments.count {
         let option = arguments[index]
         if option == "--help" || option == "-h" {
-            print("Usage: swift generate_route_catalog.swift [--app-root <path>] [--contracts <path>] [--output <path>]")
+            print("Usage: swift generate_route_catalog.swift [--app-root <path>] [--contracts <path>] [--output <path>] [--host <host>]")
             exit(0)
         }
-        guard ["--app-root", "--contracts", "--output"].contains(option), index + 1 < arguments.count else {
+        guard ["--app-root", "--contracts", "--output", "--host"].contains(option), index + 1 < arguments.count else {
             throw NSError(domain: "RouteCatalog", code: 1, userInfo: [NSLocalizedDescriptionKey: "Unknown or incomplete option: \(option). Use --help for usage."])
         }
         index += 1
@@ -60,6 +62,7 @@ func configuration(arguments: [String]) throws -> Configuration {
         case "--app-root": appRoot = absoluteURL(arguments[index], relativeTo: workingDirectory)
         case "--contracts": contractsPath = arguments[index]
         case "--output": outputPath = arguments[index]
+        case "--host": host = arguments[index]
         default: break
         }
         index += 1
@@ -68,7 +71,8 @@ func configuration(arguments: [String]) throws -> Configuration {
     return Configuration(
         appRoot: appRoot,
         contractsURL: absoluteURL(contractsPath, relativeTo: appRoot),
-        outputURL: absoluteURL(outputPath, relativeTo: appRoot)
+        outputURL: absoluteURL(outputPath, relativeTo: appRoot),
+        host: host
     )
 }
 
@@ -180,6 +184,18 @@ func destinationMap(in source: String) -> [String: String] {
     return result
 }
 
+func catalogHost(in source: String) -> String? {
+    let explicitHosts = matches(#"\.host\s*=\s*\"([^\"]+)\""#, in: source)
+        .compactMap { $0.count > 1 ? $0[1] : nil }
+        .filter { !$0.isEmpty }
+    if let host = explicitHosts.first { return host }
+
+    let literalHosts = matches(#"https?://([^/\"?#]+)"#, in: source)
+        .compactMap { $0.count > 1 ? $0[1] : nil }
+        .filter { !$0.isEmpty }
+    return literalHosts.first
+}
+
 func featurePackages(at root: URL) -> [FeaturePackage] {
     packageRoots(at: root).filter { $0 != root.standardizedFileURL }.compactMap { packageURL -> FeaturePackage? in
             let packageManifest = packageURL.appendingPathComponent("Package.swift")
@@ -197,7 +213,12 @@ func featurePackages(at root: URL) -> [FeaturePackage] {
     }
 }
 
-func sampleURL(for route: RouteContract, versions: [String]) -> String {
+func sourceText(for feature: FeaturePackage) -> String {
+    let sourceDirectory = URL(fileURLWithPath: feature.path).appendingPathComponent("Sources", isDirectory: true)
+    return swiftFiles(in: sourceDirectory).compactMap { try? contents(of: $0.path) }.joined(separator: "\n")
+}
+
+func sampleURL(for route: RouteContract, versions: [String], host: String) -> String {
     let path = route.pathTemplate.replacingOccurrences(of: #":([A-Za-z][A-Za-z0-9_]*)"#, with: "{$1}", options: .regularExpression)
     let queryItems = route.requiredQueryItems.map { item -> String in
         switch item {
@@ -206,7 +227,7 @@ func sampleURL(for route: RouteContract, versions: [String]) -> String {
         default: return "\(item)={\(item)}"
         }
     }
-    return "https://example.com\(path)" + (queryItems.isEmpty ? "" : "?" + queryItems.joined(separator: "&"))
+    return "https://\(host)\(path)" + (queryItems.isEmpty ? "" : "?" + queryItems.joined(separator: "&"))
 }
 
 func parameters(for route: RouteContract) -> String {
@@ -239,6 +260,8 @@ do {
 
     let features = featurePackages(at: configuration.appRoot)
     let appSourceText = appSource(in: configuration.appRoot, excluding: packageRoots(at: configuration.appRoot))
+    let featureSourceText = features.map(sourceText(for:)).joined(separator: "\n")
+    let sampleHost = configuration.host ?? catalogHost(in: appSourceText) ?? catalogHost(in: featureSourceText) ?? "example.com"
     let appModuleIDs = Set(
         matches(#"RouteModule\(\s*id:\s*\"([^\"]+)\""#, in: appSourceText).compactMap { $0.count > 1 ? $0[1] : nil }
         + matches(#"(?:public\s+)?static\s+let\s+id\s*=\s*\"([^\"]+)\""#, in: appSourceText).compactMap { $0.count > 1 ? $0[1] : nil }
@@ -274,7 +297,7 @@ do {
             let route = item.contract
             return """
             <tr>
-              <td><code>\(html(sampleURL(for: route, versions: manifest.supportedVersions)))</code></td>
+              <td><code>\(html(sampleURL(for: route, versions: manifest.supportedVersions, host: sampleHost)))</code></td>
               <td>\(parameters(for: route))</td>
               <td><code>\(html(item.destination))</code></td>
               <td><code>\(html(route.moduleID))/\(html(route.routeID))</code></td>

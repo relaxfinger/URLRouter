@@ -4,6 +4,20 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [2.5.9] - 2026-08-02
+
+### Changed
+
+- Render route catalog sample URLs with the App or Feature source host instead
+  of always using `example.com`.
+- Add a `--host` option to the route catalog generator for projects that want
+  an explicit documentation host.
+
+### Added
+
+- Add route catalog generator tests for inferred and explicitly configured
+  sample URL hosts.
+
 ## [2.5.8] - 2026-08-02
 
 ### Changed
