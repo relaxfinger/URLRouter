@@ -128,27 +128,48 @@ func routeNames(in source: String, moduleID: String) -> [(name: String?, routeID
     }
 }
 
-func paths(in source: String, routeNames: [(name: String?, routeID: String)]) -> [String: String] {
+func path(fromCaseComponents rawComponents: String) -> String {
+    let components = matches(#"\"([^\"]+)\""#, in: rawComponents).compactMap { $0.count > 1 ? $0[1] : nil }
+    return components.isEmpty ? "/" : "/" + components.joined(separator: "/")
+}
+
+func paths(in source: String, moduleID: String, routeNames: [(name: String?, routeID: String)]) -> [String: String] {
     var result: [String: String] = [:]
     let idsByName = Dictionary(uniqueKeysWithValues: routeNames.compactMap { item in
         item.name.map { ($0, item.routeID) }
     })
-    // Standard switch resolver: `case ["settings"]: return settings`.
-    for match in matches(#"case\s*\[([^\]]*)\]\s*:\s*return\s+([A-Za-z_][A-Za-z0-9_]*)"#, in: source) where match.count >= 3 {
+    // Standard switch resolver: `case ["settings"]: return settings` or the
+    // Swift shorthand `case ["settings"]: settings`.
+    for match in matches(#"case\s*\[([^\]]*)\]\s*:\s*(?:return\s+)?([A-Za-z_][A-Za-z0-9_]*)"#, in: source) where match.count >= 3 {
         guard let routeID = idsByName[match[2]] else { continue }
-        let components = matches(#"\"([^\"]+)\""#, in: match[1]).compactMap { $0.count > 1 ? $0[1] : nil }
-        result[routeID] = components.isEmpty ? "/" : "/" + components.joined(separator: "/")
+        result[routeID] = path(fromCaseComponents: match[1])
+    }
+    // Inline switch resolver: `case ["settings"]: ModuleRoute(...)`.
+    let escapedModuleID = NSRegularExpression.escapedPattern(for: moduleID)
+    for match in matches(#"case\s*\[([^\]]*)\]\s*:\s*(?:return\s+)?ModuleRoute\(\s*moduleID:\s*(id|\"([^\"]+)\")\s*,\s*routeID:\s*\"([^\"]+)\""#, in: source) where match.count >= 5 {
+        let matchedModuleID = match.count >= 4 ? match[3] : ""
+        guard match[2] == "id" || matchedModuleID == moduleID else { continue }
+        result[match[4]] = path(fromCaseComponents: match[1])
     }
     // Standard guard resolver. Support a direct `link.pathComponents` expression
     // as well as the common `let path = link.pathComponents` local alias.
     for route in routeNames where result[route.routeID] == nil {
-        guard let occurrence = source.range(of: "routeID: \"\(route.routeID)\"") else { continue }
+        let routePattern = #"ModuleRoute\(\s*moduleID:\s*(?:id|\""# + escapedModuleID + #"\"),\s*routeID:\s*\""# + NSRegularExpression.escapedPattern(for: route.routeID) + #"\""#
+        guard let matchedRoute = matches(routePattern, in: source).first,
+              let occurrence = source.range(of: matchedRoute[0]) else { continue }
         let start = source.index(occurrence.lowerBound, offsetBy: -min(800, source.distance(from: source.startIndex, to: occurrence.lowerBound)))
         let end = source.index(occurrence.upperBound, offsetBy: min(400, source.distance(from: occurrence.upperBound, to: source.endIndex)))
         let context = String(source[start..<end])
-        let localPathAlias = matches(#"(?:let|var)\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*link\.pathComponents"#, in: context).last?.dropFirst().first
+        let precedingContext = String(source[start..<occurrence.lowerBound])
+        let localPathAlias = matches(#"(?:let|var)\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*link\.pathComponents"#, in: precedingContext).last?.dropFirst().first
         let pathExpression = localPathAlias ?? "link.pathComponents"
         let escapedPathExpression = NSRegularExpression.escapedPattern(for: pathExpression)
+
+        if let guardCase = matches(#"guard\s+case\s*\[([^\]]*)\]\s*=\s*"# + escapedPathExpression, in: precedingContext).last, guardCase.count >= 2 {
+            result[route.routeID] = path(fromCaseComponents: guardCase[1])
+            continue
+        }
+
         guard let countMatch = matches(escapedPathExpression + #"\.count\s*==\s*(\d+)"#, in: context).last,
               countMatch.count > 1, let count = Int(countMatch[1]) else { continue }
         var components = Array(repeating: "{unknown}", count: count)
@@ -172,6 +193,22 @@ func paths(in source: String, routeNames: [(name: String?, routeID: String)]) ->
     return result
 }
 
+func mergeMetadata(
+    _ metadata: (presentations: [String], queryItems: [String], versions: [String]),
+    into result: inout [String: (presentations: [String], queryItems: [String], versions: [String])],
+    for path: String
+) {
+    if let current = result[path] {
+        result[path] = (
+            Array(Set(current.presentations + metadata.presentations)).sorted(),
+            Array(Set(current.queryItems + metadata.queryItems)).sorted(),
+            Array(Set(current.versions + metadata.versions)).sorted()
+        )
+    } else {
+        result[path] = metadata
+    }
+}
+
 func urlMetadata(in source: String) -> [String: (presentations: [String], queryItems: [String], versions: [String])] {
     var result: [String: (presentations: [String], queryItems: [String], versions: [String])] = [:]
     for match in matches(#"https?://[^\"]+"#, in: source) where !match[0].isEmpty {
@@ -186,7 +223,18 @@ func urlMetadata(in source: String) -> [String: (presentations: [String], queryI
         let presentations = pairs.filter { $0.first == "presentation" }.compactMap { $0.count > 1 ? $0[1] : nil }
         let versions = pairs.filter { $0.first == "version" }.compactMap { $0.count > 1 ? $0[1] : nil }
         guard !presentations.isEmpty else { continue }
-        result[path] = (presentations, queryItems, versions)
+        mergeMetadata((presentations, queryItems, versions), into: &result, for: path)
+    }
+
+    for match in matches(#"makeURL\(\s*path:\s*\"([^\"]+)\"\s*,\s*presentation:\s*\.([A-Za-z_][A-Za-z0-9_]*)(?:\s*,\s*queryItems:\s*\[([\s\S]*?)\])?"#, in: source) where match.count >= 3 {
+        let extraQueryItems = match.count >= 4
+            ? matches(#"URLQueryItem\(\s*name:\s*\"([^\"]+)\""#, in: match[3]).compactMap { $0.count > 1 ? $0[1] : nil }
+            : []
+        mergeMetadata(
+            ([match[2]], Array(Set(["presentation", "version"] + extraQueryItems)).sorted(), ["1"]),
+            into: &result,
+            for: match[1]
+        )
     }
     return result
 }
@@ -219,7 +267,7 @@ do {
 
     for feature in featureSources(at: config.root) {
         let names = routeNames(in: feature.source, moduleID: feature.moduleID)
-        let routePaths = paths(in: feature.source, routeNames: names)
+        let routePaths = paths(in: feature.source, moduleID: feature.moduleID, routeNames: names)
         // Apps commonly keep public links beside their UI while the resolver
         // lives in a Feature Package. Consider both locations.
         let metadata = appURLMetadata.merging(urlMetadata(in: feature.source)) { _, featureValue in featureValue }
@@ -237,7 +285,10 @@ do {
         }
     }
     guard failures.isEmpty else { throw NSError(domain: "RouteContracts", code: 1, userInfo: [NSLocalizedDescriptionKey: failures.joined(separator: "\n")]) }
-    let manifest = RouteContractManifest(schemaVersion: 1, supportedVersions: versions.isEmpty ? ["1"] : versions.sorted(), routes: routes)
+    let sortedRoutes = routes.sorted {
+        ($0.moduleID, $0.routeID, $0.pathTemplate) < ($1.moduleID, $1.routeID, $1.pathTemplate)
+    }
+    let manifest = RouteContractManifest(schemaVersion: 1, supportedVersions: versions.isEmpty ? ["1"] : versions.sorted(), routes: sortedRoutes)
     let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
     let data = try encoder.encode(manifest)
     if config.check {

@@ -58,6 +58,10 @@ let package = Package(
         .testTarget(
             name: "URLRouterPolicyProviderTests",
             dependencies: ["URLRouterPolicyProvider"]
+        ),
+        .testTarget(
+            name: "URLRouterScriptTests",
+            dependencies: []
         )
     ],
     swiftLanguageModes: [.v6]
