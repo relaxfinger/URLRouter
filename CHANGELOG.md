@@ -4,6 +4,15 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [2.5.10] - 2026-08-07
+
+### Fixed
+
+- In-app `Link` / `openURL` taps to website pages on an allowed Universal Link
+  host (for example `/privacy`, `/terms`, `/support`) now return
+  `.systemAction` instead of `.discarded`, so Safari opens instead of the tap
+  being swallowed when the path is not a registered app route.
+
 ## [2.5.9] - 2026-08-02
 
 ### Changed

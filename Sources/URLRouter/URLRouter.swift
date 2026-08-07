@@ -247,6 +247,13 @@ public struct ModuleLinkRoutingModifier: ViewModifier {
             return .handled
         } catch {
             onFailure(url, error)
+            // Marketing / legal pages often share the Universal Link host but are not
+            // registered app routes (e.g. https://example.com/privacy). Hand them to
+            // the system browser instead of swallowing in-app Link / openURL taps.
+            if error as? UniversalLinkError == .unsupportedRoute {
+                emit(outcome: .systemAction, host: host, failure: error)
+                return .systemAction
+            }
             emit(outcome: .discarded, host: host, failure: error)
             return .discarded
         }

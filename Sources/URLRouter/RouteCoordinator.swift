@@ -166,6 +166,13 @@ public final class ModuleRouteCoordinator {
             scheduleDrain()
             return .handled
         } catch {
+            // Website pages that share the app host but are not routes should open
+            // in the system browser (SwiftUI Link / openURL), not be discarded.
+            if error as? UniversalLinkError == .unsupportedRoute {
+                onFailure(url, error)
+                emit(outcome: .systemAction, host: host, failure: error)
+                return .systemAction
+            }
             discard(url, host: host, error: error)
             return .discarded
         }
