@@ -311,6 +311,28 @@ final class URLRouterTests: XCTestCase {
     }
 
     @MainActor
+    func testCoordinatorHandsUnsupportedWebsitePathsToSystemAction() {
+        var events: [ModuleRouteEvent] = []
+        let router = ModuleRouter()
+        let coordinator = ModuleRouteCoordinator(
+            router: router,
+            registry: ModuleRouteRegistry(modules: [contentModule]),
+            allowedHosts: ["example.com"],
+            onEvent: { events.append($0) }
+        )
+
+        // Legal / marketing pages share the app host but are not deep links.
+        // OpenURLAction.Result is not Equatable; assert via observability events.
+        _ = coordinator.route(URL(string: "https://example.com/privacy")!)
+
+        XCTAssertTrue(router.path.isEmpty)
+        XCTAssertTrue(events.contains {
+            $0.outcome == .systemAction && $0.failureCode == "link.unsupported_route"
+        })
+        XCTAssertFalse(events.contains { $0.outcome == .discarded })
+    }
+
+    @MainActor
     private var contentModule: RouteModule {
         RouteModule(id: "content") { link in
             guard link.pathComponents.count == 2, link.pathComponents[0] == "articles" else { return nil }
