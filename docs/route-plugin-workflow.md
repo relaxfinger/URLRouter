@@ -8,7 +8,7 @@ needed.
 
 | Plugin Product | When it runs | Output | May change Git-tracked files? |
 | --- | --- | --- | --- |
-| `URLRouterRouteBuildPlugin` | Every Xcode build | A temporary `route-catalog.html` in Derived Data | No |
+| `URLRouterRouteBuildPlugin` | Every Xcode build | Contract validation and a temporary `route-catalog.html` in Derived Data | No |
 | `URLRouterRouteCommandPlugin` | A developer runs it intentionally | App-root `RouteContracts.json` and `docs/route-catalog.html` | Yes, after Xcode grants write access |
 
 Keep exactly one `RouteContracts.json` at the App root. It describes the
@@ -21,15 +21,16 @@ with the route change that produced them.
 
 Before starting, add URLRouter **directly** to the App target's Package
 Dependencies. In Xcode, use **File → Add Package Dependencies…**, enter the
-URLRouter repository URL, select version `2.5.1` or later, and add the
+URLRouter repository URL, select version `2.5.10` or later, and add the
 `URLRouter` library product to the App target. The plugin will not be
 selectable if URLRouter is only a transitive dependency of another package.
 
-`generate_route_catalog.swift` creates `RouteContracts.json` automatically if
-it is missing. The Xcode Run Script integration can therefore generate both
-tracked files on its first build. A SwiftPM Build Plugin is intentionally
-validation-only and cannot write tracked files from its sandbox; for that
-integration, run the Command Plugin once to bootstrap the files.
+Use the Command Plugin once before the first build-plugin build. Although
+`generate_route_catalog.swift` can create a missing `RouteContracts.json` when
+run directly, the Build Plugin runs `update_route_contracts.swift --check`
+first. It is validation-only and cannot write tracked files from its sandbox.
+An Xcode Run Script that invokes the generation scripts directly can bootstrap
+the two files, but that is a separate integration.
 
 1. In the Project navigator, select the blue project file.
 2. Under **TARGETS**, select the App target that owns the Feature Packages.
@@ -42,14 +43,15 @@ integration, run the Command Plugin once to bootstrap the files.
    contracts**.
 
 The first successful build confirms that the App-root `RouteContracts.json`
-matches the routes that can be safely inferred from the Feature Packages. It
+matches the routes that can be safely inferred from Feature Packages and
+App-owned Swift source. It
 also creates `RouteCatalog/route-catalog.html` inside Xcode's plugin work
 directory under Derived Data. That HTML is a build artifact for local
 inspection, not a file to commit.
 
 If the plugin is not listed, first resolve package versions with **File →
 Packages → Resolve Package Versions**, confirm that the selected URLRouter
-version is 2.5.1 or later, and confirm the App target directly depends on the
+version is 2.5.10 or later, and confirm the App target directly depends on the
 `URLRouter` package. Then close and reopen the project if Xcode has not
 refreshed its package products.
 
@@ -58,7 +60,7 @@ refreshed its package products.
 Run this after adding, removing, or changing a public route, its required
 parameters, its destination, or presentation mode.
 
-1. Save the Feature Package source changes.
+1. Save the Feature Package or App-owned route source changes.
 2. Select **File → Packages → URLRouterRouteCommandPlugin**.
 3. When Xcode asks for permission to write to the package/project directory,
    approve the request. This is intentional: the command updates reviewed
@@ -70,8 +72,8 @@ parameters, its destination, or presentation mode.
    the same pull request.
 
 The command fails rather than guessing when it cannot reliably infer a route
-URL or its parameters. Fix the Feature's standard `RouteModule` resolver or
-URL-builder declaration, then run the command again.
+URL or its parameters. Fix the standard `RouteModule` resolver or URL-builder
+declaration in the owning Feature or App source, then run the command again.
 
 ## Swift Package App equivalent
 

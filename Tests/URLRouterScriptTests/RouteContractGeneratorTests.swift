@@ -208,6 +208,48 @@ final class RouteContractGeneratorTests: XCTestCase {
         XCTAssertFalse(catalog.contains("wrong.example"))
     }
 
+    func testCatalogHostInferenceIgnoresInterpolatedURLHelpers() throws {
+        let appRoot = try makeTemporaryApp(source: """
+        struct ModuleRoute {
+            init(moduleID: String, routeID: String) {}
+        }
+
+        struct RouteModule {
+            init(id: String, resolver: (Link) -> ModuleRoute?) {}
+        }
+
+        struct Link {
+            let pathComponents: [String]
+        }
+
+        enum AppRoutes {
+            static let home = ModuleRoute(moduleID: "home", routeID: "index")
+            static let module = RouteModule(id: "home") { link in
+                switch link.pathComponents {
+                case ["home"]: return home
+                default: return nil
+                }
+            }
+        }
+
+        enum AppLinks {
+            static func makeURL(host: String, path: String) -> String {
+                "https://\\(host)\\(path)"
+            }
+
+            static let home = URL(string: "https://catalog.example/home?presentation=push&version=1")!
+        }
+        """)
+
+        try runGenerator(appRoot: appRoot)
+        let catalogURL = appRoot.appendingPathComponent("docs/route-catalog.html")
+        try runCatalogGenerator(appRoot: appRoot, output: catalogURL)
+        let catalog = try String(contentsOf: catalogURL, encoding: .utf8)
+
+        XCTAssertTrue(catalog.contains("https://catalog.example/home?presentation=push&amp;version=1"))
+        XCTAssertFalse(catalog.contains("https://\\(host)\\(path)"))
+    }
+
     private func makeTemporaryApp(source: String) throws -> URL {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("URLRouterScriptTests")

@@ -138,8 +138,9 @@ final class AppRouteObserver: ModuleRouteObserving {
 ## 用契约 CI 保护已发布 URL
 
 `RouteContracts.json` 是 App 根目录唯一、受版本控制的公开路由目录，而不是每个
-Feature Package 都复制一份。修改公开路由时，同一个 PR 还要修改 Feature 解析器和
-URL builder、重新生成目录、更新测试，以及必要的迁移说明。
+Feature Package 都复制一份。它汇总 Feature Package 与 App 自身源码中的路由。修改公开
+路由时，同一个 PR 还要修改对应的解析器和 URL builder、重新生成目录、更新测试，以及必要
+的迁移说明。
 
 CI 会校验目录并与 PR 基线比较，拒绝意外删除或不兼容修改路径、展示方式、必填参数
 和支持的协议版本。确实要破坏兼容性时，按主版本变更处理并提供迁移方案。
@@ -163,7 +164,7 @@ swift package plugin generate-urlrouter-contracts --allow-writing-to-package-dir
 
 该命令会明确请求写入授权，再更新 `RouteContracts.json` 和
 `docs/route-catalog.html`。CI 仍应执行上面的两条校验命令；Build Plugin 有意不改写
-受版本控制的文件。
+受版本控制的文件。生成的网页目录默认显示英文，审查者可在页面内切换为中文。
 
 Xcode 的精确点击步骤、预期输出、SwiftPM 等价命令及插件没有出现在列表时的排查，见
 [路由插件工作流](route-plugin-workflow.zh-CN.md)。
