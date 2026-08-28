@@ -113,7 +113,8 @@ from being “handled” without visibly switching tabs.
 
 For every public route change, update these items in one pull request:
 
-1. The Feature's parser and URL builder.
+1. The owning Feature's parser and URL builder, or the equivalent App-owned
+   route source.
 2. Run `URLRouterRouteCommandPlugin` to generate the App-root `RouteContracts.json` and catalog.
 3. Tests and caller documentation.
 4. Migration notes if an old URL remains in emails, websites, notifications, or
@@ -124,8 +125,9 @@ decide your product migration policy. Treat a removed or reinterpreted URL as a
 breaking change and plan it accordingly.
 
 `RouteContracts.json` belongs once, at the App root. It aggregates every
-Feature Package's public routes; do not distribute separate catalogs through
-Features. This lets the App validate and publish one coherent URL surface.
+Feature Package's and App-owned source's public routes; do not distribute
+separate catalogs through Features. This lets the App validate and publish one
+coherent URL surface.
 
 For a remote URLRouter dependency, enable `URLRouterRouteBuildPlugin` in the
 App target's **Run Build Tool Plug-ins** phase. Xcode resolves the package and

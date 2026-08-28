@@ -41,7 +41,7 @@ Package。
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.5.7")
+    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.5.10")
 ]
 ```
 
@@ -168,10 +168,12 @@ Feature Package 和 App 自身的 Swift 源码，并生成两个需要审查、�
 
 - `RouteContracts.json`：公开 URL 契约，用于兼容性校验。
 - `docs/route-catalog.html`：按 App 与 Feature Package 分组、可搜索的路由目录。
+  页面默认显示英文，可在页面内切换为中文。
 
 `URLRouterRouteBuildPlugin` 会在每次编译时校验契约，并在 Derived Data 生成临时网页目录。
 开发者修改公开路由时，`URLRouterRouteCommandPlugin` 会明确更新受 Git 跟踪的
-`RouteContracts.json` 和 `docs/route-catalog.html`。
+`RouteContracts.json` 和 `docs/route-catalog.html`。新 App 应先运行一次 Command
+Plugin 再启用 Build Plugin：Build Plugin 只校验已有契约，不会创建受 Git 跟踪的文件。
 
 完整的 Xcode 逐步配置（如何添加 Build Plugin、执行 Command Plugin、审查输出，以及插件
 未出现在列表时如何排查）见[路由插件工作流](docs/route-plugin-workflow.zh-CN.md)。

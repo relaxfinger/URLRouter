@@ -42,7 +42,7 @@ Add `URLRouter` to the App target and to any Feature Package that declares a
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.5.7")
+    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.5.10")
 ]
 ```
 
@@ -172,12 +172,15 @@ tracked review artifacts:
 
 - `RouteContracts.json`: the public URL contract used by compatibility checks.
 - `docs/route-catalog.html`: a searchable catalog grouped by App and Feature
-  Package.
+  Package. Its interface defaults to English and can switch to Chinese in the
+  page.
 
 `URLRouterRouteBuildPlugin` validates the contract on each build and writes a
 temporary catalog under Derived Data. `URLRouterRouteCommandPlugin` explicitly
 updates the tracked `RouteContracts.json` and `docs/route-catalog.html` when a
-developer changes public routes.
+developer changes public routes. Run the Command Plugin once before enabling
+the Build Plugin in a new App: the Build Plugin validates an existing contract
+and does not create tracked files.
 
 For the full, step-by-step Xcode setup (including how to add the Build Plugin,
 run the Command Plugin, review its output, and fix a missing plugin in the

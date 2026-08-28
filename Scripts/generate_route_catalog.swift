@@ -192,7 +192,9 @@ func catalogHost(in source: String) -> String? {
 
     let literalHosts = matches(#"https?://([^/\"?#]+)"#, in: source)
         .compactMap { $0.count > 1 ? $0[1] : nil }
-        .filter { !$0.isEmpty }
+        // Do not treat a Swift interpolation such as `https://\(host)\(path)`
+        // in a URL helper as a literal catalog host.
+        .filter { !$0.isEmpty && !$0.contains("\\") && !$0.contains("(") && !$0.contains(")") }
     return literalHosts.first
 }
 

@@ -103,7 +103,7 @@ route ID 与 tab tag 完全一致。这样路由不会出现“已处理但界�
 
 每次修改公开路由，都在同一个 PR 中更新：
 
-1. Feature 的解析器和 URL builder。
+1. 拥有该路由的 Feature 解析器和 URL builder，或等价的 App 自身路由源码。
 2. 用 `URLRouterRouteCommandPlugin` 生成 App 根目录的 `RouteContracts.json` 与网页目录。
 3. 测试和调用方文档。
 4. 旧 URL 已存在于邮件、网页、推送或已发布 App 时的迁移说明。
@@ -111,8 +111,9 @@ route ID 与 tab tag 完全一致。这样路由不会出现“已处理但界�
 仓库 CI 会阻止目录结构错误和破坏性契约变化，但它不会替你决定产品迁移策略。
 删除或改变已有 URL 的含义，应按破坏性变更处理并提前规划。
 
-`RouteContracts.json` 只属于 App 根目录的一份，它汇总所有 Feature Package 的公开
-路由；不要让每个 Feature 各自保存副本。这样 App 才能校验并发布一个一致的 URL 表面。
+`RouteContracts.json` 只属于 App 根目录的一份，它汇总所有 Feature Package 和 App 自身
+源码中的公开路由；不要让每个 Feature 各自保存副本。这样 App 才能校验并发布一个一致的
+URL 表面。
 
 URLRouter 作为远程依赖时，在 App target 的 **Run Build Tool Plug-ins** 启用
 `URLRouterRouteBuildPlugin`。Xcode 会自行解析 Package 和插件位置，每次编译都会校验当前

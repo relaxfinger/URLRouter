@@ -147,9 +147,10 @@ top failure codes, and queue-full/expiry counts.
 ## Protect published URLs with contract CI
 
 `RouteContracts.json` is the one source-controlled catalog of public routes in
-the App root, not a file copied into every Feature Package. In the same pull
-request that changes a public route, update the Feature parser and URL builder,
-regenerate the catalog, update tests, and add any migration note.
+the App root, not a file copied into every Feature Package. It aggregates
+Feature Package and App-owned routes. In the same pull request that changes a
+public route, update its parser and URL builder, regenerate the catalog, update
+tests, and add any migration note.
 
 CI validates the catalog and compares it with the PR base commit. It rejects an
 accidental removal or incompatible change to a path, presentation, required
@@ -178,6 +179,8 @@ swift package plugin generate-urlrouter-contracts --allow-writing-to-package-dir
 The command explicitly requests write access, then updates `RouteContracts.json`
 and `docs/route-catalog.html`. CI should continue to run the two validation
 commands above; a build plugin deliberately does not rewrite tracked files.
+The generated catalog defaults to English and includes an in-page Chinese
+switch for reviewers who need it.
 
 Follow the [route-plugin workflow](route-plugin-workflow.md) for the exact
 Xcode clicks, expected outputs, SwiftPM command equivalent, and troubleshooting

@@ -7,7 +7,7 @@
 
 | Plugin Product | 执行时机 | 输出 | 是否会修改 Git 跟踪的文件 |
 | --- | --- | --- | --- |
-| `URLRouterRouteBuildPlugin` | 每次 Xcode 编译 | Derived Data 中临时的 `route-catalog.html` | 否 |
+| `URLRouterRouteBuildPlugin` | 每次 Xcode 编译 | 契约校验和 Derived Data 中临时的 `route-catalog.html` | 否 |
 | `URLRouterRouteCommandPlugin` | 开发者明确执行时 | App 根目录的 `RouteContracts.json` 与 `docs/route-catalog.html` | 会，且必须先授权写入 |
 
 一个 App 根目录只保留一份 `RouteContracts.json`。它汇总所有 Feature Package 和 App 自身
@@ -17,14 +17,15 @@ Swift 源码中的公开路由，而不是每个 Feature Package 各维护一份
 ## 在 Xcode 配置 Build Plugin
 
 开始前，确保 App target **直接**添加了 URLRouter Package Dependency：在 Xcode 选择
-**File → Add Package Dependencies…**，输入 URLRouter 仓库地址，选择 `2.5.1` 或更高版本，
+**File → Add Package Dependencies…**，输入 URLRouter 仓库地址，选择 `2.5.10` 或更高版本，
 并将 `URLRouter` library product 添加给该 App target。若 URLRouter 只是其他 Package 的
 间接依赖，插件不会出现在可选列表中。
 
-若缺少 `RouteContracts.json`，`generate_route_catalog.swift` 会自动创建它。因此使用 Xcode
-Run Script 集成时，首次编译即可生成两个受 Git 跟踪的文件。SwiftPM Build Plugin 刻意只做
-校验，且受沙盒限制不能改写受 Git 跟踪的文件；使用该集成时，首次仍需执行一次 Command
-Plugin 来创建文件。
+第一次使用 Build Plugin 前，先运行一次 Command Plugin。直接执行
+`generate_route_catalog.swift` 时，若缺少 `RouteContracts.json`，脚本会自动创建它；但
+Build Plugin 会先运行 `update_route_contracts.swift --check`。它刻意只做校验，且受沙盒
+限制不能改写受 Git 跟踪的文件。直接调用生成脚本的 Xcode Run Script 可以在首次编译生成
+两个文件，但那是另一种集成方式。
 
 1. 在 Project navigator 选中蓝色的工程文件。
 2. 在 **TARGETS** 中选中拥有这些 Feature Package 的 App target。
@@ -35,19 +36,19 @@ Plugin 来创建文件。
    `URLRouterRouteBuildPlugin`。
 6. 编译一次 App。Xcode 会执行名为 **Verify URLRouter route contracts** 的任务。
 
-首次成功编译表示 App 根目录的 `RouteContracts.json` 与各 Feature Package 中可可靠推导的
-路由一致。插件还会在 Derived Data 的插件工作目录中生成
+首次成功编译表示 App 根目录的 `RouteContracts.json` 与各 Feature Package、App 自身 Swift
+源码中可可靠推导的路由一致。插件还会在 Derived Data 的插件工作目录中生成
 `RouteCatalog/route-catalog.html`，供本地查看。它只是构建产物，不应提交。
 
 若列表中没有插件，依次检查：在 **File → Packages → Resolve Package Versions** 解析版本；
-确认 URLRouter 为 2.5.1 或更高版本；确认 App target 直接依赖 `URLRouter` Package。若
+确认 URLRouter 为 2.5.10 或更高版本；确认 App target 直接依赖 `URLRouter` Package。若
 Xcode 尚未刷新 package products，关闭再重新打开工程。
 
 ## 在 Xcode 执行 Command Plugin，生成需提交的文件
 
 新增、删除或修改公开路由、必填参数、目标页面或展示方式后，按以下步骤执行：
 
-1. 保存 Feature Package 的源码改动。
+1. 保存 Feature Package 或 App 自身路由源码的改动。
 2. 选择 **File → Packages → URLRouterRouteCommandPlugin**。
 3. Xcode 询问是否允许写入 package/project 目录时，选择允许。这是预期操作：该命令会
    更新受版本控制、需要审查的文件。
@@ -55,8 +56,8 @@ Xcode 尚未刷新 package products，关闭再重新打开工程。
 5. 再编译一次 App，确认 Build Plugin 能通过。
 6. 在同一个 PR 中提交 Feature 源码、两个生成文件和相应测试。
 
-如果命令无法可靠推导 URL 或参数，它会失败而不会猜测。请补全 Feature 中标准的
-`RouteModule` resolver 或 URL builder 声明，再重新执行。
+如果命令无法可靠推导 URL 或参数，它会失败而不会猜测。请在拥有该路由的 Feature 或
+App 源码中补全标准的 `RouteModule` resolver 或 URL builder 声明，再重新执行。
 
 ## Swift Package App 的等价命令
 
