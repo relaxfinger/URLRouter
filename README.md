@@ -42,7 +42,7 @@ Add `URLRouter` to the App target and to any Feature Package that declares a
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.5.10")
+    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.5.11")
 ]
 ```
 

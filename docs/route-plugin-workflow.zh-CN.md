@@ -17,7 +17,7 @@ Swift 源码中的公开路由，而不是每个 Feature Package 各维护一份
 ## 在 Xcode 配置 Build Plugin
 
 开始前，确保 App target **直接**添加了 URLRouter Package Dependency：在 Xcode 选择
-**File → Add Package Dependencies…**，输入 URLRouter 仓库地址，选择 `2.5.10` 或更高版本，
+**File → Add Package Dependencies…**，输入 URLRouter 仓库地址，选择 `2.5.11` 或更高版本，
 并将 `URLRouter` library product 添加给该 App target。若 URLRouter 只是其他 Package 的
 间接依赖，插件不会出现在可选列表中。
 
@@ -41,7 +41,7 @@ Build Plugin 会先运行 `update_route_contracts.swift --check`。它刻意只�
 `RouteCatalog/route-catalog.html`，供本地查看。它只是构建产物，不应提交。
 
 若列表中没有插件，依次检查：在 **File → Packages → Resolve Package Versions** 解析版本；
-确认 URLRouter 为 2.5.10 或更高版本；确认 App target 直接依赖 `URLRouter` Package。若
+确认 URLRouter 为 2.5.11 或更高版本；确认 App target 直接依赖 `URLRouter` Package。若
 Xcode 尚未刷新 package products，关闭再重新打开工程。
 
 ## 在 Xcode 执行 Command Plugin，生成需提交的文件

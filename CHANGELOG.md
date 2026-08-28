@@ -4,6 +4,13 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [2.5.11] - 2026-08-28
+
+### Fixed
+
+- Ignore interpolated Swift URL helpers when inferring a route catalog host, so
+  generated sample URLs use a real literal host.
+
 ## [2.5.10] - 2026-08-07
 
 ### Fixed

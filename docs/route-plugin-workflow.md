@@ -21,7 +21,7 @@ with the route change that produced them.
 
 Before starting, add URLRouter **directly** to the App target's Package
 Dependencies. In Xcode, use **File → Add Package Dependencies…**, enter the
-URLRouter repository URL, select version `2.5.10` or later, and add the
+URLRouter repository URL, select version `2.5.11` or later, and add the
 `URLRouter` library product to the App target. The plugin will not be
 selectable if URLRouter is only a transitive dependency of another package.
 
@@ -51,7 +51,7 @@ inspection, not a file to commit.
 
 If the plugin is not listed, first resolve package versions with **File →
 Packages → Resolve Package Versions**, confirm that the selected URLRouter
-version is 2.5.10 or later, and confirm the App target directly depends on the
+version is 2.5.11 or later, and confirm the App target directly depends on the
 `URLRouter` package. Then close and reopen the project if Xcode has not
 refreshed its package products.
 
