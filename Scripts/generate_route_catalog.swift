@@ -141,7 +141,7 @@ func packageRoots(at root: URL) -> [URL] {
     }
     var roots: [URL] = []
     for case let url as URL in enumerator {
-        if ignoredDirectories.contains(url.lastPathComponent) {
+        if ignoredDirectories.contains(url.lastPathComponent) || url.lastPathComponent.hasPrefix(".") {
             enumerator.skipDescendants()
             continue
         }
@@ -160,7 +160,7 @@ func appSource(in root: URL, excluding packageRoots: [URL]) -> String {
     }
     var sources: [String] = []
     for case let url as URL in enumerator {
-        if ignoredDirectories.contains(url.lastPathComponent) || nestedPackageRoots.contains(url.path) {
+        if ignoredDirectories.contains(url.lastPathComponent) || url.lastPathComponent.hasPrefix(".") || nestedPackageRoots.contains(url.path) {
             enumerator.skipDescendants()
             continue
         }

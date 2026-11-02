@@ -32,12 +32,18 @@ func matches(_ pattern: String, in text: String) -> [[String]] {
     }
 }
 
+/// Hidden directories such as `.git`, `.swiftpm` or `.claude/worktrees` can hold
+/// whole copies of the app (git worktrees); scanning them duplicates every route.
+func isHidden(_ url: URL) -> Bool {
+    url.lastPathComponent.hasPrefix(".")
+}
+
 func sourceFiles(in directory: URL, recursively: Bool = true) -> [URL] {
     guard let enumerator = fileManager.enumerator(at: directory, includingPropertiesForKeys: [.isRegularFileKey]) else { return [] }
     let ignored: Set<String> = [".build", ".git", "DerivedData", "Pods", "Carthage", "SourcePackages"]
     var result: [URL] = []
     for case let url as URL in enumerator {
-        if ignored.contains(url.lastPathComponent) { enumerator.skipDescendants(); continue }
+        if ignored.contains(url.lastPathComponent) || isHidden(url) { enumerator.skipDescendants(); continue }
         if url.pathExtension == "swift" { result.append(url) }
     }
     return result
@@ -79,7 +85,7 @@ func packageRoots(at root: URL) -> [URL] {
     let ignored: Set<String> = [".build", ".git", "DerivedData", "Pods", "Carthage", "SourcePackages"]
     var packages: [URL] = []
     for case let url as URL in enumerator {
-        if ignored.contains(url.lastPathComponent) { enumerator.skipDescendants(); continue }
+        if ignored.contains(url.lastPathComponent) || isHidden(url) { enumerator.skipDescendants(); continue }
         if url.lastPathComponent == "Package.swift" { packages.append(url.deletingLastPathComponent().standardizedFileURL) }
     }
     return packages
@@ -91,7 +97,7 @@ func appSource(at root: URL, excluding packageRoots: [URL]) -> String {
     let nestedPackageRoots = Set(packageRoots.filter { $0 != root.standardizedFileURL }.map(\.path))
     var sources: [String] = []
     for case let url as URL in enumerator {
-        if ignored.contains(url.lastPathComponent) || nestedPackageRoots.contains(url.path) {
+        if ignored.contains(url.lastPathComponent) || isHidden(url) || nestedPackageRoots.contains(url.path) {
             enumerator.skipDescendants()
             continue
         }

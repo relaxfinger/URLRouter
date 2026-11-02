@@ -4,6 +4,15 @@ All notable changes are documented here. This project follows [Semantic Versioni
 
 ## [Unreleased]
 
+## [2.5.12] - 2026-11-02
+
+### Fixed
+
+- Skip hidden directories (such as `.claude/worktrees`, `.swiftpm`) when the
+  route contract and catalog scripts scan an app. A git worktree inside the app
+  folder held a second copy of every route, and the build plugin crashed with
+  `Duplicate values for key`.
+
 ## [2.5.11] - 2026-08-28
 
 ### Fixed

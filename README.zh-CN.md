@@ -41,7 +41,7 @@ Package。
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.5.11")
+    .package(url: "https://github.com/relaxfinger/URLRouter.git", from: "2.5.12")
 ]
 ```
 
