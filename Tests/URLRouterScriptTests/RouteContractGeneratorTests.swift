@@ -250,6 +250,56 @@ final class RouteContractGeneratorTests: XCTestCase {
         XCTAssertFalse(catalog.contains("https://\\(host)\\(path)"))
     }
 
+    func testIgnoresSourceCopiesInHiddenDirectories() throws {
+        let source = """
+        struct ModuleRoute {
+            let moduleID: String
+            let routeID: String
+        }
+
+        struct RouteModule {
+            init(id: String, resolve: ([String]) -> ModuleRoute?) {}
+        }
+
+        enum AppRoutes {
+            static let todayTab = ModuleRoute(moduleID: "navigation", routeID: "today")
+
+            static let navigationModule = RouteModule(id: "navigation") { pathComponents in
+                switch pathComponents {
+                case ["today"]:
+                    todayTab
+                default:
+                    nil
+                }
+            }
+        }
+
+        enum AppLinks {
+            static let todayTab = makeURL(path: "/today", presentation: .tab)
+
+            private static func makeURL(path: String, presentation: ModulePresentationStyle) -> String {
+                "https://bandup.app\\(path)"
+            }
+        }
+        """
+        let appRoot = try makeTemporaryApp(source: source)
+        // A git worktree (for example `.claude/worktrees/<name>`) holds a full copy of the app.
+        let worktreeSources = appRoot.appendingPathComponent(".claude/worktrees/copy/App", isDirectory: true)
+        try FileManager.default.createDirectory(at: worktreeSources, withIntermediateDirectories: true)
+        try source.write(to: worktreeSources.appendingPathComponent("Routes.swift"), atomically: true, encoding: .utf8)
+
+        try runGenerator(appRoot: appRoot)
+
+        let manifest = try readManifest(at: appRoot.appendingPathComponent("RouteContracts.json"))
+        XCTAssertEqual(manifest.routes.filter { $0.moduleID == "navigation" }.map(\.routeID), ["today"])
+        XCTAssertEqual(route("navigation", "today", in: manifest)?.pathTemplate, "/today")
+
+        let catalogURL = appRoot.appendingPathComponent("docs/route-catalog.html")
+        try runCatalogGenerator(appRoot: appRoot, output: catalogURL)
+        let catalog = try String(contentsOf: catalogURL, encoding: .utf8)
+        XCTAssertFalse(catalog.contains(".claude"))
+    }
+
     private func makeTemporaryApp(source: String) throws -> URL {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("URLRouterScriptTests")
